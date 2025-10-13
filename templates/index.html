@@ -1,0 +1,1867 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Observation Compliance Report</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'simon-blue': '#003366',
+              'simon-orange': '#f37021',
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      /* For Webkit-based browsers (Chrome, Safari) */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #f1f5f9; /* gray-100 */
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #94a3b8; /* gray-400 */
+        border-radius: 4px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #64748b; /* gray-500 */
+      }
+      .fade-in {
+        animation: fadeIn 0.5s ease-in-out;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+    </style>
+</head>
+  <body class="bg-gray-50">
+    <div id="root"></div>
+    <script type="text/babel">
+
+    // Enums and Types
+    const IssueType = {
+      FATAL: 'Fatal',
+      LTI: 'LTI',
+      MTI: 'MTI',
+      NEAR_MISS: 'Near Miss',
+      OBSERVATION: 'Observation',
+    };
+
+    const Status = {
+      OPEN: 'Open',
+      CLOSED: 'Closed',
+    };
+
+    const SafetyCategory = {
+      UNSAFE_ACT: 'Unsafe Act',
+      UNSAFE_CONDITION: 'Unsafe Condition',
+    };
+
+    const UserRole = {
+      ADMIN: 'admin',
+      SAFETY: 'safety',
+      PUBLIC: 'public',
+    }
+
+
+    // Icons
+    const PlusIcon = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+      </svg>
+    );
+
+    const EditIcon = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+            <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
+        </svg>
+    );
+
+    const TrashIcon = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clipRule="evenodd" />
+        </svg>
+    );
+
+    const PhotoIcon = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-4 2 2 4-4 2 2v2zM8 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+        </svg>
+    );
+
+    const ClipboardListIcon = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+      </svg>
+    );
+
+    const HeartBrokenIcon = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+      </svg>
+    );
+
+    const UserMinusIcon = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13 16a4 4 0 100-8 4 4 0 000 8zm0-12a9 9 0 110 18 9 9 0 010-18zm-4 8h8" />
+      </svg>
+    );
+
+    const FirstAidIcon = () => (
+       <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    );
+
+    const ExclamationTriangleIcon = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+      </svg>
+    );
+
+    const EyeIcon = () => (
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+      </svg>
+    );
+        
+    const CogIcon = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+        </svg>
+    );
+
+    const LogoutIcon = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
+        </svg>
+    );
+
+    // Header Component
+    const Header = ({ onNewReport, onManageFields, onLogout, userRole }) => {
+      return (
+        <header className="bg-simon-blue shadow-md sticky top-0 z-40">
+          <div className="container mx-auto px-2 sm:px-4 md:px-8 py-2 sm:py-3">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 sm:gap-4">
+                     <img src="https://simonindia.com/assets/images/logo.png" alt="Simon India Logo" className="h-8 sm:h-10"/>
+                     <h1 className="text-sm sm:text-lg md:text-xl font-semibold text-white hidden xs:block">
+                        Observation Compliance Report
+                     </h1>
+                </div>
+             
+             <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
+              {userRole === UserRole.ADMIN && (
+                <button
+                    onClick={onManageFields}
+                    className="inline-flex items-center gap-1 sm:gap-2 justify-center px-2 sm:px-3 md:px-4 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-medium rounded-md text-simon-blue bg-white hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-simon-blue focus:ring-white min-h-[36px] sm:min-h-[40px]"
+                >
+                    <CogIcon />
+                    <span className="hidden sm:inline">Manage Fields</span>
+                </button>
+              )}
+              <button
+                onClick={onNewReport}
+                className="inline-flex items-center gap-1 sm:gap-2 justify-center px-2 sm:px-3 md:px-4 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-medium rounded-md text-white bg-simon-orange hover:bg-simon-orange/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-simon-blue focus:ring-white min-h-[36px] sm:min-h-[40px]"
+              >
+                <PlusIcon />
+                <span className="hidden sm:inline">New Report</span>
+              </button>
+              <button
+                onClick={onLogout}
+                className="inline-flex items-center gap-1 sm:gap-2 justify-center px-2 sm:px-3 md:px-4 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-simon-blue focus:ring-red-500 min-h-[36px] sm:min-h-[40px]"
+                title="Logout"
+              >
+                <LogoutIcon />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
+             </div>
+            </div>
+          </div>
+        </header>
+      );
+    };
+
+    // SummaryCards Component
+    const SummaryCard = ({ title, count, icon, color }) => {
+      return (
+        <div className={`bg-white rounded-lg shadow p-3 flex items-center justify-between border-l-4 ${color}`}>
+          <div>
+            <p className="text-sm font-medium text-gray-500 uppercase">{title}</p>
+            <p className="text-2xl font-bold text-gray-800">{count}</p>
+          </div>
+          <div className="text-gray-300">
+            {icon}
+          </div>
+        </div>
+      );
+    };
+
+    const SummaryCards = ({ counts }) => {
+      return (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
+          <SummaryCard title="Total Incidents" count={counts.total} icon={<ClipboardListIcon />} color="border-simon-blue" />
+          <SummaryCard title="Fatal" count={counts[IssueType.FATAL]} icon={<HeartBrokenIcon />} color="border-red-500" />
+          <SummaryCard title="LTI" count={counts[IssueType.LTI]} icon={<UserMinusIcon />} color="border-orange-500" />
+          <SummaryCard title="MTI" count={counts[IssueType.MTI]} icon={<FirstAidIcon />} color="border-yellow-500" />
+          <SummaryCard title="Near Miss" count={counts[IssueType.NEAR_MISS]} icon={<ExclamationTriangleIcon />} color="border-purple-500" />
+          <SummaryCard title="Observations" count={counts[IssueType.OBSERVATION]} icon={<EyeIcon />} color="border-green-500" />
+        </div>
+      );
+    };
+
+    // ObservationTable Component
+    const StatusBadge = ({ status }) => {
+      const baseClasses = 'px-3 py-1 text-xs font-semibold rounded-full inline-block';
+      if (!status) {
+        return <span className={`${baseClasses} bg-gray-100 text-gray-800`}>-</span>;
+      }
+      if (status === Status.OPEN) {
+        return <span className={`${baseClasses} bg-orange-100 text-simon-orange`}>Open</span>;
+      }
+      return <span className={`${baseClasses} bg-green-100 text-green-800`}>Closed</span>;
+    };
+
+    const PhotoLink = ({ url, label }) => (
+        <a href={url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
+            <PhotoIcon />
+            {label}
+        </a>
+    );
+
+    const formatDate = (dateString) => {
+        if (!dateString || !/^\d{4}-\d{2}-\d{2}$/.test(dateString)) return '';
+        const [year, month, day] = dateString.split('-');
+        return `${day}/${month}/${year}`;
+    };
+
+    const ObservationTable = ({ observations, onEdit, onDelete, onView, userRole }) => {
+      if (observations.length === 0) {
+        return (
+          <div className="text-center py-16 bg-white rounded-lg shadow">
+            <h3 className="text-xl font-medium text-gray-700">No observations found.</h3>
+            <p className="text-gray-500 mt-2">Click "New Report" to get started.</p>
+          </div>
+        );
+      }
+      
+      const canEdit = userRole === UserRole.ADMIN || userRole === UserRole.SAFETY;
+
+      const handleEditClick = (obs) => {
+          if (!canEdit) {
+              alert("You don't have permission to edit this observation.");
+              return;
+          }
+          onEdit(obs);
+      }
+
+      return (
+        <React.Fragment>
+          {/* Desktop & Large Tablet View: Table */}
+          <div className="hidden lg:block bg-white rounded-lg shadow overflow-x-auto">
+            <table className="w-full min-w-[1000px] text-sm text-left text-gray-500">
+              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3">Sl No.</th>
+                  <th scope="col" className="px-6 py-3">Date</th>
+                  <th scope="col" className="px-6 py-3">Contractor</th>
+                  <th scope="col" className="px-6 py-3">Sub-contractor</th>
+                  <th scope="col" className="px-6 py-3">Issue Type</th>
+                  <th scope="col" className="px-6 py-3">Category</th>
+                  <th scope="col" className="px-6 py-3">Observation</th>
+                  <th scope="col" className="px-6 py-3">Status</th>
+                  <th scope="col" className="px-6 py-3">Attachments</th>
+                  <th scope="col" className="px-6 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {observations.map((obs, index) => (
+                  <tr key={obs.id} className="bg-white border-b border-gray-200 hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 font-medium text-gray-900">{index + 1}</td>
+                    <td className="px-6 py-4">{formatDate(obs.date)}</td>
+                    <td className="px-6 py-4">{obs.contractor || 'SIL'}</td>
+                    <td className="px-6 py-4">{obs.subContractor || '-'}</td>
+                    <td className="px-6 py-4">{obs.issueType}</td>
+                    <td className="px-6 py-4">{obs.safetyCategory}</td>
+                    <td className="px-6 py-4 max-w-xs truncate" title={obs.observation}>{obs.observation}</td>
+                    <td className="px-6 py-4">
+                      <StatusBadge status={obs.status} />
+                    </td>
+                    <td className="px-6 py-4">
+                        <div className="flex flex-col space-y-1">
+                            {obs.observationPhoto && <PhotoLink url={obs.observationPhoto} label="Obs. Photo" />}
+                            {obs.issueType === IssueType.OBSERVATION && obs.compliancePhoto && <PhotoLink url={obs.compliancePhoto} label="Comp. Photo" />}
+                        </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-3">
+                        <button onClick={() => onView(obs)} className="text-simon-blue hover:text-simon-blue/80" title="View">
+                          <EyeIcon />
+                        </button>
+                        {obs.issueType === IssueType.OBSERVATION ? (
+                          <button onClick={() => handleEditClick(obs)} className={`text-simon-blue/80 hover:text-simon-blue ${!canEdit && 'cursor-not-allowed opacity-50'}`} title="Edit">
+                            <EditIcon />
+                          </button>
+                        ) : (
+                          <div className="w-5 h-5" /> // Placeholder to maintain alignment
+                        )}
+                        <button onClick={() => onDelete(obs.id)} className="text-red-600 hover:text-red-800" title="Delete">
+                          <TrashIcon />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile & Small Tablet View: Cards */}
+          <div className="lg:hidden grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {observations.map((obs, index) => (
+              <div key={obs.id} className="bg-white rounded-lg shadow p-4 flex flex-col">
+                  {/* Card Header */}
+                  <div className="flex justify-between items-start mb-3 pb-2 border-b border-gray-200">
+                      <div className="flex flex-col">
+                          <span className="font-bold text-gray-800">Obs. #{index + 1}</span>
+                          <span className="text-xs text-gray-500">{obs.contractor || 'SIL'}</span>
+                      </div>
+                      <StatusBadge status={obs.status} />
+                  </div>
+
+                  {/* Card Body */}
+                  <div className="flex-grow space-y-2">
+                      <div>
+                          <p className="text-xs font-semibold text-gray-500">Date:</p>
+                          <p className="text-sm text-gray-700">{formatDate(obs.date)}</p>
+                      </div>
+                      <div>
+                          <p className="text-xs font-semibold text-gray-500">Issue Type:</p>
+                          <p className="text-sm text-gray-700">{obs.issueType}</p>
+                      </div>
+                       <div>
+                          <p className="text-xs font-semibold text-gray-500">Category:</p>
+                          <p className="text-sm text-gray-700">{obs.safetyCategory}</p>
+                      </div>
+                       {obs.subContractor && (
+                         <div>
+                            <p className="text-xs font-semibold text-gray-500">Sub-contractor:</p>
+                            <p className="text-sm text-gray-700">{obs.subContractor}</p>
+                        </div>
+                      )}
+                      <div>
+                          <p className="text-xs font-semibold text-gray-500">Observation:</p>
+                          <p className="text-sm text-gray-700 break-words">{obs.observation}</p>
+                      </div>
+                      {obs.compliance && (
+                           <div>
+                              <p className="text-xs font-semibold text-gray-500">Compliance:</p>
+                              <p className="text-sm text-gray-700 break-words">{obs.compliance}</p>
+                          </div>
+                      )}
+                      {(obs.observationPhoto || (obs.issueType === IssueType.OBSERVATION && obs.compliancePhoto)) && (
+                         <div>
+                            <p className="text-xs font-semibold text-gray-500">Attachments:</p>
+                            <div className="flex items-center gap-4 mt-1">
+                                {obs.observationPhoto && <PhotoLink url={obs.observationPhoto} label="Observation" />}
+                                {obs.issueType === IssueType.OBSERVATION && obs.compliancePhoto && <PhotoLink url={obs.compliancePhoto} label="Compliance" />}
+                            </div>
+                        </div>
+                      )}
+                  </div>
+
+                  {/* Card Footer with Actions */}
+                  <div className="flex items-center justify-end space-x-2 pt-3 mt-auto border-t border-gray-200 mt-3">
+                      <button onClick={() => onView(obs)} className="flex items-center gap-1 text-sm text-simon-blue/90 hover:text-simon-blue font-medium py-1 px-2 rounded-md hover:bg-gray-100 transition-colors">
+                          <EyeIcon />
+                          View
+                      </button>
+                      {obs.issueType === IssueType.OBSERVATION && (
+                        <button onClick={() => handleEditClick(obs)} className={`flex items-center gap-1 text-sm text-simon-blue/90 hover:text-simon-blue font-medium py-1 px-2 rounded-md hover:bg-gray-100 transition-colors ${!canEdit && 'cursor-not-allowed opacity-50'}`}>
+                            <EditIcon />
+                            Edit
+                        </button>
+                      )}
+                      <button onClick={() => onDelete(obs.id)} className="flex items-center gap-1 text-sm text-red-600 hover:text-red-800 font-medium py-1 px-2 rounded-md hover:bg-gray-100 transition-colors">
+                          <TrashIcon />
+                          Delete
+                      </button>
+                  </div>
+              </div>
+            ))}
+          </div>
+        </React.Fragment>
+      );
+    };
+
+    // ObservationFormModal Component
+    const PhotoInput = ({ label, photo, onPhotoChange, onViewClick, required }) => {
+        const [preview, setPreview] = React.useState(photo);
+
+        React.useEffect(() => {
+            setPreview(photo);
+        }, [photo]);
+
+        const handleFileChange = (e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64String = reader.result;
+                    setPreview(base64String);
+                    onPhotoChange(base64String);
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+        
+        return (
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {label}
+                    {required && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                <div className="mt-1 flex flex-wrap items-center gap-4">
+                    {preview ? (
+                        <img src={preview} alt="Preview" className="w-24 h-24 rounded-lg object-cover shadow-sm" />
+                    ) : (
+                        <div className="w-24 h-24 rounded-lg bg-gray-200 flex items-center justify-center text-gray-400 text-xs">No Image</div>
+                    )}
+                    <div className="flex items-center gap-2">
+                        <input type="file" id={`file-input-${label}`} accept="image/*" onChange={handleFileChange} className="hidden" />
+                        <label htmlFor={`file-input-${label}`} className="cursor-pointer text-sm font-semibold py-2 px-4 rounded-full bg-orange-100 text-simon-orange hover:bg-orange-200">Choose File</label>
+                        {preview && (
+                            <button type="button" onClick={() => onViewClick(preview)} className="text-sm font-semibold py-2 px-4 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300">
+                               View
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    const getInitialFormData = () => ({
+        id: 0,
+        projectCode: '',
+        projectName: '',
+        projectManagerContractor: '',
+        projectManagerClient: '',
+        clientName: '',
+        contractor: 'SIL',
+        date: new Date().toISOString().split('T')[0],
+        raisedBy: '',
+        issueType: '',
+        safetyCategory: '',
+        observation: '',
+        observationPhoto: '',
+        subContractor: '',
+        status: 'Open',
+        compliance: '',
+        complianceDate: '',
+        compliancePhoto: '',
+        history: [],
+    });
+
+    const PhotoViewer = ({ imageUrl, onClose }) => (
+        <div className="fixed inset-0 bg-white z-[100] flex justify-center items-center p-4" onClick={onClose}>
+            <button onClick={onClose} className="absolute top-4 right-4 text-gray-700 text-4xl font-bold">&times;</button>
+            <div className="relative max-w-full max-h-full" onClick={(e) => e.stopPropagation()}>
+                <img src={imageUrl} alt="Full screen view" className="max-w-full max-h-[90vh] object-contain" />
+            </div>
+        </div>
+    );
+
+    const ValidationPopup = ({ onClose }) => (
+        <div className="fixed inset-0 bg-white z-[150] flex justify-center items-center p-4" onClick={onClose}>
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+                <div className="p-6 text-center">
+                    <p className="text-lg text-gray-800 mb-4">
+                        Please fill all required details.
+                    </p>
+                    <button 
+                        type="button" 
+                        onClick={onClose} 
+                        className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-simon-blue hover:bg-simon-blue/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-simon-blue"
+                    >
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+    const ObservationFormModal = ({ observation, onClose, onSave, projects, subContractors }) => {
+      const [formData, setFormData] = React.useState(getInitialFormData());
+      const [viewingPhoto, setViewingPhoto] = React.useState(null);
+      const [raisedBySource, setRaisedBySource] = React.useState('');
+      const [raisedByName, setRaisedByName] = React.useState('');
+      const [isValidationErrorOpen, setValidationErrorOpen] = React.useState(false);
+      const isEditing = !!observation;
+      const subContractorsForProject = subContractors[formData.projectCode] || [];
+
+      React.useEffect(() => {
+        if (observation) {
+          // When editing, fetch all fields including project details
+          const projectDetails = projects.find(p => p.projectCode === observation.projectCode);
+          setFormData({
+              ...observation,
+              // Auto-fetch project details
+              projectName: projectDetails?.projectName || '',
+              projectManagerContractor: projectDetails?.projectManagerContractor || '',
+              projectManagerClient: projectDetails?.projectManagerClient || '',
+              clientName: projectDetails?.clientName || '',
+              contractor: observation.contractor || 'SIL',
+              // Format dates properly
+              date: observation.date ? new Date(observation.date).toISOString().split('T')[0] : '',
+              complianceDate: observation.complianceDate ? new Date(observation.complianceDate).toISOString().split('T')[0] : '',
+          });
+        } else {
+            setFormData(getInitialFormData());
+            setRaisedBySource('');
+            setRaisedByName('');
+        }
+      }, [observation, projects]);
+
+      const handleChange = (e) => {
+        const { name, value } = e.target;
+        if (name === 'projectCode') {
+            const projectDetails = projects.find(p => p.projectCode === value);
+            setFormData(prev => ({
+                ...prev,
+                projectCode: value,
+                projectName: projectDetails?.projectName || '',
+                projectManagerContractor: projectDetails?.projectManagerContractor || '',
+                projectManagerClient: projectDetails?.projectManagerClient || '',
+                clientName: projectDetails?.clientName || '',
+                contractor: 'SIL', // Always set to SIL as it's permanent
+                subContractor: '', // Reset subcontractor when project changes
+            }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
+      };
+      
+      const handlePhotoChange = (field, base64) => {
+        setFormData(prev => ({ ...prev, [field]: base64 }));
+      };
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        
+        let hasErrors = false;
+
+        // --- Validation Checks ---
+        if (!isEditing) { // Validation for new report
+            if (
+                !formData.projectCode ||
+                !formData.date ||
+                !raisedBySource ||
+                !raisedByName.trim() ||
+                !formData.issueType ||
+                !formData.safetyCategory ||
+                !formData.observation.trim() ||
+                !formData.observationPhoto
+            ) {
+                hasErrors = true;
+            }
+        } else if (formData.issueType === IssueType.OBSERVATION) { // Validation for compliance details on edit
+            const originalObservation = observation;
+            const hasComplianceChanged =
+                (formData.compliance || '') !== (originalObservation.compliance || '') ||
+                (formData.complianceDate || '') !== (originalObservation.complianceDate || '') ||
+                (formData.compliancePhoto || '') !== (originalObservation.compliancePhoto || '') ||
+                formData.status !== originalObservation.status;
+
+            if (hasComplianceChanged) {
+                if (
+                    !formData.compliance?.trim() ||
+                    !formData.complianceDate ||
+                    !formData.compliancePhoto ||
+                    !formData.status
+                ) {
+                    hasErrors = true;
+                }
+            }
+        }
+
+        if (hasErrors) {
+            setValidationErrorOpen(true);
+            return;
+        }
+
+        // --- If validation passes, proceed to save ---
+        const finalObservation = { ...formData };
+        if (!isEditing) {
+            finalObservation.raisedBy = `${raisedBySource} - ${raisedByName.trim()}`;
+        }
+        
+        // Remove fields that don't exist in the database model
+        const validFields = ['projectCode', 'date', 'raisedBy', 'issueType', 'safetyCategory', 'observation', 
+                            'observationPhoto', 'contractor', 'subContractor', 'status', 'compliance', 'complianceDate', 'compliancePhoto'];
+        
+        const cleanedData = {};
+        validFields.forEach(field => {
+            if (finalObservation[field] !== undefined && finalObservation[field] !== '') {
+                cleanedData[field] = finalObservation[field];
+            }
+        });
+        
+        // Ensure default values for new observations
+        if (!isEditing) {
+            cleanedData.contractor = cleanedData.contractor || 'SIL';
+            cleanedData.status = cleanedData.status || 'Open';
+        }
+        
+        // Include id only for editing
+        if (isEditing && finalObservation.id) {
+            cleanedData.id = finalObservation.id;
+        }
+        
+        onSave(cleanedData);
+      };
+      
+      const readOnlyClasses = "bg-gray-100 border-gray-300 text-gray-500 cursor-not-allowed";
+      const editableClasses = "focus:border-simon-orange focus:ring-simon-orange bg-white border-gray-300 text-gray-900";
+      const commonInputClasses = "mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm py-3 px-3 min-h-[44px]";
+
+      return (
+        <React.Fragment>
+        <div className="fixed inset-0 bg-white z-50 flex justify-center items-center p-2 sm:p-4" onClick={onClose}>
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] flex flex-col mx-2 sm:mx-0" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center p-5 border-b border-gray-200">
+                <h2 className="text-xl font-bold text-simon-blue">
+                    {isEditing ? 'Edit Observation / Add Compliance' : 'Record a Safety Incident'}
+                </h2>
+                <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            
+            <form onSubmit={handleSubmit} className="p-6 overflow-y-auto" noValidate>
+                {/* Project Details */}
+                <div className="md:col-span-3 text-base sm:text-lg font-semibold text-simon-blue border-b pb-2 mb-4 border-gray-200">Project Details</div>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 sm:gap-x-6 gap-y-4">
+                    {isEditing ? (
+                         <div>
+                            <label htmlFor="projectCode" className="block text-sm font-medium text-gray-700">Project Code <span className="text-red-500 ml-1">*</span></label>
+                            <input type="text" name="projectCode" id="projectCode" value={formData.projectCode} readOnly className={`${commonInputClasses} ${readOnlyClasses}`} />
+                        </div>
+                    ) : (
+                        <div>
+                            <label htmlFor="projectCode" className="block text-sm font-medium text-gray-700">Project Code <span className="text-red-500 ml-1">*</span></label>
+                            <select name="projectCode" id="projectCode" value={formData.projectCode} onChange={handleChange} className={`${commonInputClasses} ${editableClasses}`}>
+                                <option value="">Select a Project Code</option>
+                                {projects.map(p => (
+                                    <option key={p.projectCode} value={p.projectCode}>{p.projectCode}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                    
+                    <div className="md:col-span-2">
+                        <label htmlFor="projectName" className="block text-sm font-medium text-gray-700">Project Name</label>
+                        <input type="text" name="projectName" id="projectName" value={formData.projectName} readOnly className={`${commonInputClasses} ${readOnlyClasses}`} />
+                    </div>
+                     <div>
+                        <label htmlFor="projectManagerContractor" className="block text-sm font-medium text-gray-700">Project Manager (Contractor)</label>
+                        <input type="text" name="projectManagerContractor" id="projectManagerContractor" value={formData.projectManagerContractor} readOnly className={`${commonInputClasses} ${readOnlyClasses}`} />
+                    </div>
+                     <div>
+                        <label htmlFor="projectManagerClient" className="block text-sm font-medium text-gray-700">Project Manager (Client)</label>
+                        <input type="text" name="projectManagerClient" id="projectManagerClient" value={formData.projectManagerClient} readOnly className={`${commonInputClasses} ${readOnlyClasses}`} />
+                    </div>
+                    <div>
+                        <label htmlFor="clientName" className="block text-sm font-medium text-gray-700">Client Name</label>
+                        <input type="text" name="clientName" id="clientName" value={formData.clientName} readOnly className={`${commonInputClasses} ${readOnlyClasses}`} />
+                    </div>
+                    <div>
+                        <label htmlFor="contractor" className="block text-sm font-medium text-gray-700">Contractor</label>
+                        <input type="text" name="contractor" id="contractor" value={formData.contractor} readOnly className={`${commonInputClasses} ${readOnlyClasses}`} />
+                    </div>
+                </div>
+
+                {/* Observation Details */}
+                <div className="md:col-span-3 text-base sm:text-lg font-semibold text-simon-blue border-b pb-2 mt-6 mb-4 border-gray-200">Observation Details</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 sm:gap-x-6 gap-y-4">
+                    <div className="md:col-span-1">
+                        <label htmlFor="date" className="block text-sm font-medium text-gray-700">Date <span className="text-red-500 ml-1">*</span></label>
+                        <input type="date" name="date" id="date" value={formData.date} onChange={handleChange} readOnly={isEditing} className={`${commonInputClasses} ${isEditing ? readOnlyClasses : editableClasses}`} />
+                    </div>
+
+                    {isEditing ? (
+                         <div className="md:col-span-2">
+                            <label htmlFor="raisedBy" className="block text-sm font-medium text-gray-700">Raised By</label>
+                            <input type="text" name="raisedBy" id="raisedBy" value={formData.raisedBy} readOnly className={`${commonInputClasses} ${readOnlyClasses}`} />
+                        </div>
+                    ) : (
+                        <React.Fragment>
+                            <div className="md:col-span-1">
+                                <label htmlFor="raisedBySource" className="block text-sm font-medium text-gray-700">Raised By (Source) <span className="text-red-500 ml-1">*</span></label>
+                                 <select 
+                                    name="raisedBySource" 
+                                    id="raisedBySource" 
+                                    value={raisedBySource} 
+                                    onChange={(e) => setRaisedBySource(e.target.value)} 
+                                    className={`${commonInputClasses} ${editableClasses}`}
+                                >
+                                    <option value="" disabled>Select Source</option>
+                                    <option value="Client">Client</option>
+                                    <option value="EPC Contractor">EPC Contractor</option>
+                                    <option value="Sub-contractor">Sub-contractor</option>
+                                </select>
+                            </div>
+                            <div className="md:col-span-1">
+                                 <label htmlFor="raisedByName" className="block text-sm font-medium text-gray-700">Name <span className="text-red-500 ml-1">*</span></label>
+                                <input 
+                                    type="text" 
+                                    name="raisedByName" 
+                                    id="raisedByName" 
+                                    value={raisedByName} 
+                                    onChange={(e) => setRaisedByName(e.target.value)} 
+                                    disabled={!raisedBySource} 
+                                    placeholder="Enter name" 
+                                    className={`${commonInputClasses} ${!raisedBySource ? readOnlyClasses : editableClasses}`} 
+                                />
+                            </div>
+                        </React.Fragment>
+                    )}
+
+                     <div className="md:col-span-1">
+                        <label htmlFor="issueType" className="block text-sm font-medium text-gray-700">Issue Type <span className="text-red-500 ml-1">*</span></label>
+                        <select name="issueType" id="issueType" value={formData.issueType} onChange={handleChange} disabled={isEditing} className={`${commonInputClasses} ${isEditing ? readOnlyClasses : editableClasses}`}>
+                            <option value="" disabled>Select an Issue Type</option>
+                            {Object.values(IssueType).map(type => (
+                                <option key={type} value={type}>{type}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700">
+                            Category
+                            {!isEditing && <span className="text-red-500 ml-1">*</span>}
+                        </label>
+                        <div className="mt-2 flex items-center space-x-6">
+                            <div className="flex items-center">
+                                <input
+                                    id="unsafe-act"
+                                    name="safetyCategory"
+                                    type="radio"
+                                    value={SafetyCategory.UNSAFE_ACT}
+                                    checked={formData.safetyCategory === SafetyCategory.UNSAFE_ACT}
+                                    onChange={handleChange}
+                                    disabled={isEditing}
+                                    className="h-4 w-4 border-gray-300 text-simon-orange focus:ring-simon-orange disabled:cursor-not-allowed disabled:bg-gray-200 dark:disabled:bg-gray-600"
+                                />
+                                <label htmlFor="unsafe-act" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+                                    Unsafe Act
+                                </label>
+                            </div>
+                            <div className="flex items-center">
+                                <input
+                                    id="unsafe-condition"
+                                    name="safetyCategory"
+                                    type="radio"
+                                    value={SafetyCategory.UNSAFE_CONDITION}
+                                    checked={formData.safetyCategory === SafetyCategory.UNSAFE_CONDITION}
+                                    onChange={handleChange}
+                                    disabled={isEditing}
+                                    className="h-4 w-4 border-gray-300 text-simon-orange focus:ring-simon-orange disabled:cursor-not-allowed disabled:bg-gray-200 dark:disabled:bg-gray-600"
+                                />
+                                <label htmlFor="unsafe-condition" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+                                    Unsafe Condition
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    {subContractorsForProject.length > 0 && (
+                         <div className="md:col-span-1">
+                            <label htmlFor="subContractor" className="block text-sm font-medium text-gray-700">Sub-contractor</label>
+                            <select name="subContractor" id="subContractor" value={formData.subContractor || ''} onChange={handleChange} disabled={isEditing} className={`${commonInputClasses} ${isEditing ? readOnlyClasses : editableClasses}`}>
+                                <option value="">Select a Sub-contractor</option>
+                                {subContractorsForProject.map(sc => (
+                                    <option key={sc} value={sc}>{sc}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                     
+                    <div className="md:col-span-3">
+                        <label htmlFor="observation" className="block text-sm font-medium text-gray-700">Observation Description <span className="text-red-500 ml-1">*</span></label>
+                        <textarea name="observation" id="observation" rows={3} value={formData.observation} onChange={handleChange} readOnly={isEditing} placeholder="Describe the observation in detail..." className={`${commonInputClasses} ${isEditing ? readOnlyClasses : editableClasses}`}></textarea>
+                    </div>
+                     <div className="md:col-span-3">
+                        <PhotoInput label="Observation Photo" required={!isEditing} photo={formData.observationPhoto} onPhotoChange={(base64) => handlePhotoChange('observationPhoto', base64)} onViewClick={setViewingPhoto} />
+                    </div>
+                </div>
+                
+                {/* Compliance Details - ONLY SHOWN IN EDIT MODE FOR OBSERVATIONS */}
+                {isEditing && formData.issueType === IssueType.OBSERVATION && (
+                    <React.Fragment>
+                        <div className="md:col-span-3 text-base sm:text-lg font-semibold text-simon-blue border-b pb-2 mt-6 mb-4 border-gray-200">Compliance Details</div>
+                        <p className="md:col-span-3 text-xs sm:text-sm text-gray-500 dark:text-gray-400 -mt-2 mb-4">
+                            All fields below are required when submitting a compliance update.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-4 sm:gap-x-6 gap-y-4">
+                            <div className="md:col-span-1">
+                                <label htmlFor="complianceDate" className="block text-sm font-medium text-gray-700">Compliance Date <span className="text-red-500 ml-1">*</span></label>
+                                <input type="date" name="complianceDate" id="complianceDate" value={formData.complianceDate} onChange={handleChange} className={`${commonInputClasses} ${editableClasses}`} />
+                            </div>
+                            <div className="md:col-span-1">
+                                <label htmlFor="status" className="block text-sm font-medium text-gray-700">Status <span className="text-red-500 ml-1">*</span></label>
+                                <select name="status" id="status" value={formData.status} onChange={handleChange} className={`${commonInputClasses} ${editableClasses}`}>
+                                    <option value={Status.OPEN}>Open</option>
+                                    <option value={Status.CLOSED}>Closed</option>
+                                </select>
+                            </div>
+                            <div className="md:col-span-3">
+                                <label htmlFor="compliance" className="block text-sm font-medium text-gray-700">Compliance Action <span className="text-red-500 ml-1">*</span></label>
+                                <textarea name="compliance" id="compliance" rows={3} value={formData.compliance || ''} onChange={handleChange} placeholder="Describe the compliance action taken..." className={`${commonInputClasses} ${editableClasses}`}></textarea>
+                            </div>
+                            <div className="md:col-span-3">
+                                <PhotoInput label="Compliance Photo" required photo={formData.compliancePhoto} onPhotoChange={(base64) => handlePhotoChange('compliancePhoto', base64)} onViewClick={setViewingPhoto} />
+                            </div>
+                        </div>
+                    </React.Fragment>
+                )}
+
+                <div className="flex flex-col sm:flex-row justify-end gap-3 sm:gap-0 pt-6 border-t border-gray-200 mt-6">
+                    <button type="button" onClick={onClose} className="w-full sm:w-auto bg-white py-3 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-simon-orange min-h-[44px]">
+                        Cancel
+                    </button>
+                    <button type="submit" className="w-full sm:w-auto sm:ml-3 inline-flex justify-center py-3 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-simon-blue hover:bg-simon-blue/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-simon-blue min-h-[44px]">
+                        Save
+                    </button>
+                </div>
+            </form>
+          </div>
+        </div>
+        {viewingPhoto && <PhotoViewer imageUrl={viewingPhoto} onClose={() => setViewingPhoto(null)} />}
+        {isValidationErrorOpen && <ValidationPopup onClose={() => setValidationErrorOpen(false)} />}
+        </React.Fragment>
+      );
+    };
+
+    // ViewObservationModal Component (read-only)
+    const ViewObservationModal = ({ observation, onClose }) => {
+        if (!observation) return null;
+        return (
+            <div className="fixed inset-0 bg-white z-50 flex justify-center items-center p-2 sm:p-4" onClick={onClose}>
+                <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[95vh] overflow-y-auto mx-2 sm:mx-0" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex justify-between items-center p-5 border-b border-gray-200">
+                        <h2 className="text-xl font-bold text-simon-blue">Observation Details</h2>
+                        <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-xs text-gray-500">Date</p>
+                                <p className="text-sm font-medium">{formatDate(observation.date)}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500">Issue Type</p>
+                                <p className="text-sm font-medium">{observation.issueType}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500">Category</p>
+                                <p className="text-sm font-medium">{observation.safetyCategory}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500">Contractor</p>
+                                <p className="text-sm font-medium">{observation.contractor || 'SIL'}</p>
+                            </div>
+                            {observation.subContractor && (
+                                <div>
+                                    <p className="text-xs text-gray-500">Sub-contractor</p>
+                                    <p className="text-sm font-medium">{observation.subContractor}</p>
+                                </div>
+                            )}
+                            {observation.status && (
+                                <div>
+                                    <p className="text-xs text-gray-500">Status</p>
+                                    <p className="text-sm font-medium">{observation.status}</p>
+                                </div>
+                            )}
+                        </div>
+                        <div>
+                            <p className="text-xs text-gray-500">Observation</p>
+                            <p className="text-sm whitespace-pre-wrap">{observation.observation}</p>
+                        </div>
+                        {observation.compliance && (
+                            <div>
+                                <p className="text-xs text-gray-500">Compliance</p>
+                                <p className="text-sm whitespace-pre-wrap">{observation.compliance}</p>
+                            </div>
+                        )}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            {observation.observationPhoto && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-2">Observation Photo</p>
+                                    <img src={observation.observationPhoto} alt="Observation" className="w-full max-h-72 object-contain rounded-md border" />
+                                </div>
+                            )}
+                            {observation.compliancePhoto && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-2">Compliance Photo</p>
+                                    <img src={observation.compliancePhoto} alt="Compliance" className="w-full max-h-72 object-contain rounded-md border" />
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex justify-end pt-4">
+                            <button onClick={onClose} className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-simon-blue hover:bg-simon-blue/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-simon-blue">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+    
+    // ManageFieldsModal Component (New)
+    const ManageFieldsModal = ({ isOpen, onClose, onSaveProject, onSaveContractor, projects, subContractors = {}, onEditProject, onDeleteProject, onEditContractor, onDeleteContractor }) => {
+        const [activeTab, setActiveTab] = React.useState('addProject');
+        const [selectedProjectForContractors, setSelectedProjectForContractors] = React.useState('');
+
+        // Reset selected project when switching tabs
+        const handleTabChange = (tab) => {
+            setActiveTab(tab);
+            if (tab !== 'manageContractors') {
+                setSelectedProjectForContractors('');
+            }
+        };
+        
+        // State for Add Project Form
+        const [projectData, setProjectData] = React.useState({
+            projectCode: '',
+            projectName: '',
+            projectManagerContractor: '',
+            projectManagerClient: '',
+            clientName: '',
+            contractor: 'SIL'
+        });
+
+        // State for Add Contractor Form
+        const [contractorData, setContractorData] = React.useState({
+            project_code: '',
+            name: ''
+        });
+        
+        if (!isOpen) return null;
+        
+        const handleProjectChange = (e) => {
+            const { name, value } = e.target;
+            setProjectData(prev => ({ ...prev, [name]: value }));
+        };
+
+        const handleContractorChange = (e) => {
+            const { name, value } = e.target;
+            setContractorData(prev => ({ ...prev, [name]: value }));
+        };
+
+        const handleProjectSubmit = (e) => {
+            e.preventDefault();
+            for (const key in projectData) {
+                if (!projectData[key]) {
+                    alert(`Please fill out the project ${key.replace(/([A-Z])/g, ' $1').toLowerCase()} field.`);
+                    return;
+                }
+            }
+            onSaveProject(projectData);
+            // Optionally reset form after submission
+            setProjectData({ projectCode: '', projectName: '', projectManagerContractor: '', projectManagerClient: '', clientName: '', contractor: 'SIL'});
+        };
+
+        const handleContractorSubmit = (e) => {
+            e.preventDefault();
+            if(!contractorData.project_code || !contractorData.name) {
+                alert('Please select a project and enter a contractor name.');
+                return;
+            }
+            onSaveContractor(contractorData);
+            // Optionally reset form after submission
+            setContractorData({ project_code: '', name: '' });
+        };
+        
+        const commonInputClasses = "mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm py-3 px-3 focus:border-simon-orange focus:ring-simon-orange bg-white border-gray-300 text-gray-900 min-h-[44px]";
+        const activeTabClasses = "border-simon-orange text-simon-orange";
+        const inactiveTabClasses = "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300";
+
+        if (!isOpen) return null;
+        
+        return (
+            <div className="fixed inset-0 bg-white z-50 flex justify-center items-center p-2 sm:p-4" onClick={onClose}>
+                <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-2 sm:mx-0 max-h-[95vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+                     <div className="flex justify-between items-center p-5 border-b border-gray-200">
+                        <h2 className="text-xl font-bold text-simon-blue">Manage Fields</h2>
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+
+                    <div className="border-b border-gray-200">
+                        <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
+                            <button onClick={() => handleTabChange('addProject')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'addProject' ? activeTabClasses : inactiveTabClasses}`}>
+                                Add New Project
+                            </button>
+                            <button onClick={() => handleTabChange('addContractor')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'addContractor' ? activeTabClasses : inactiveTabClasses}`}>
+                                Add Contractor
+                            </button>
+                            <button onClick={() => handleTabChange('manageProjects')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'manageProjects' ? activeTabClasses : inactiveTabClasses}`}>
+                                Manage Projects
+                            </button>
+                            <button onClick={() => handleTabChange('manageContractors')} className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'manageContractors' ? activeTabClasses : inactiveTabClasses}`}>
+                                Manage Contractors
+                            </button>
+                        </nav>
+                    </div>
+
+                    {activeTab === 'addProject' && (
+                        <form onSubmit={handleProjectSubmit} className="p-6 space-y-4">
+                            <div>
+                                <label htmlFor="projectCode" className="block text-sm font-medium text-gray-700">Project Code</label>
+                                <input type="text" name="projectCode" value={projectData.projectCode} onChange={handleProjectChange} className={commonInputClasses} required />
+                            </div>
+                            <div>
+                                <label htmlFor="projectName" className="block text-sm font-medium text-gray-700">Project Name</label>
+                                <input type="text" name="projectName" value={projectData.projectName} onChange={handleProjectChange} className={commonInputClasses} required />
+                            </div>
+                            <div>
+                                <label htmlFor="projectManagerContractor" className="block text-sm font-medium text-gray-700">Project Manager (Contractor)</label>
+                                <input type="text" name="projectManagerContractor" value={projectData.projectManagerContractor} onChange={handleProjectChange} className={commonInputClasses} required />
+                            </div>
+                             <div>
+                                <label htmlFor="projectManagerClient" className="block text-sm font-medium text-gray-700">Project Manager (Client)</label>
+                                <input type="text" name="projectManagerClient" value={projectData.projectManagerClient} onChange={handleProjectChange} className={commonInputClasses} required />
+                            </div>
+                             <div>
+                                <label htmlFor="clientName" className="block text-sm font-medium text-gray-700">Client Name</label>
+                                <input type="text" name="clientName" value={projectData.clientName} onChange={handleProjectChange} className={commonInputClasses} required />
+                            </div>
+                             <div className="flex justify-end pt-4">
+                                <button type="submit" className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-simon-blue hover:bg-simon-blue/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-simon-blue">
+                                    Add Project
+                                </button>
+                            </div>
+                        </form>
+                    )}
+                    
+                    {activeTab === 'addContractor' && (
+                         <form onSubmit={handleContractorSubmit} className="p-6 space-y-4">
+                             <div>
+                                <label htmlFor="project_code" className="block text-sm font-medium text-gray-700">Select Project Code</label>
+                                <select name="project_code" value={contractorData.project_code} onChange={handleContractorChange} className={commonInputClasses} required>
+                                    <option value="">-- Select a Project --</option>
+                                    {projects.map(p => <option key={p.projectCode} value={p.projectCode}>{p.projectCode} - {p.projectName}</option>)}
+                                </select>
+                             </div>
+                             <div>
+                                <label htmlFor="name" className="block text-sm font-medium text-gray-700">New Contractor Name</label>
+                                <input type="text" name="name" value={contractorData.name} onChange={handleContractorChange} className={commonInputClasses} required />
+                             </div>
+                              <div className="flex justify-end pt-4">
+                                <button type="submit" className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-simon-blue hover:bg-simon-blue/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-simon-blue">
+                                    Add Contractor
+                                </button>
+                            </div>
+                         </form>
+                    )}
+
+                    {activeTab === 'manageProjects' && (
+                        <div className="p-6">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4">Existing Projects</h3>
+                            <div className="space-y-4">
+                                {projects.map((project) => (
+                                    <div key={project.id} className="bg-gray-50 p-4 rounded-lg border">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex-1">
+                                                <h4 className="font-medium text-gray-900">{project.projectName}</h4>
+                                                <p className="text-sm text-gray-600">Code: {project.projectCode}</p>
+                                                <p className="text-sm text-gray-600">Client: {project.clientName}</p>
+                                                <p className="text-sm text-gray-600">PM (Contractor): {project.projectManagerContractor}</p>
+                                                <p className="text-sm text-gray-600">PM (Client): {project.projectManagerClient}</p>
+                                            </div>
+                                            <div className="flex space-x-2">
+                                                <button
+                                                    onClick={() => onEditProject(project)}
+                                                    className="px-3 py-1 text-sm bg-simon-orange text-white rounded hover:bg-simon-orange/90"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => onDeleteProject(project.id)}
+                                                    className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {projects.length === 0 && (
+                                    <p className="text-gray-500 text-center py-4">No projects found</p>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {activeTab === 'manageContractors' && (
+                        <div className="p-6">
+                            <h3 className="text-lg font-medium text-gray-900 mb-4">Manage Contractors</h3>
+                            
+                            {/* Project Selection Dropdown */}
+                            <div className="mb-6">
+                                <div className="flex justify-between items-center mb-2">
+                                    <label htmlFor="project-select" className="block text-sm font-medium text-gray-700">
+                                        Select Project to View Contractors
+                                    </label>
+                                    {selectedProjectForContractors && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedProjectForContractors('')}
+                                            className="text-sm text-simon-orange hover:text-simon-orange/90"
+                                        >
+                                            Clear Selection
+                                        </button>
+                                    )}
+                                </div>
+                                <select
+                                    id="project-select"
+                                    value={selectedProjectForContractors || ''}
+                                    onChange={(e) => setSelectedProjectForContractors(e.target.value)}
+                                    className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm py-3 px-3 focus:border-simon-orange focus:ring-simon-orange bg-white border-gray-300 text-gray-900 min-h-[44px]"
+                                >
+                                    <option value="">Select a project...</option>
+                                    {projects.map(project => (
+                                        <option key={project.id} value={project.projectCode}>
+                                            {project.projectCode} - {project.projectName}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Contractors List for Selected Project */}
+                            {selectedProjectForContractors && (
+                                <div className="space-y-4">
+                                    <div className="bg-gray-50 p-4 rounded-lg border">
+                                        <h4 className="font-medium text-gray-900 mb-3">
+                                            Contractors for Project: {selectedProjectForContractors}
+                                        </h4>
+                                        <div className="space-y-2">
+                                            {subContractors[selectedProjectForContractors] && subContractors[selectedProjectForContractors].length > 0 ? (
+                                                subContractors[selectedProjectForContractors].map((contractor) => (
+                                                    <div key={contractor.id} className="flex justify-between items-center bg-white p-3 rounded border">
+                                                        <span className="text-sm text-gray-900">{contractor.name}</span>
+                                                        <div className="flex space-x-2">
+                                                            <button
+                                                                onClick={() => onEditContractor(contractor)}
+                                                                className="px-3 py-1 text-sm bg-simon-orange text-white rounded hover:bg-simon-orange/90"
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                onClick={() => onDeleteContractor(contractor.id)}
+                                                                className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <p className="text-gray-500 text-sm">No contractors found for this project</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Show message when no project is selected */}
+                            {!selectedProjectForContractors && (
+                                <div className="text-center py-8">
+                                    <p className="text-gray-500">Please select a project to view its contractors</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            </div>
+        )
+    };
+
+    // Edit Project Modal
+    const EditProjectModal = ({ project, onClose, onSave }) => {
+        const [formData, setFormData] = React.useState(project || {});
+        
+        React.useEffect(() => {
+            if (project) {
+                setFormData(project);
+            }
+        }, [project]);
+
+        const handleChange = (e) => {
+            setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        };
+
+        const handleSubmit = (e) => {
+            e.preventDefault();
+            onSave(formData);
+        };
+
+        if (!project) return null;
+
+        return (
+            <div className="fixed inset-0 bg-white z-50 flex justify-center items-center p-2 sm:p-4" onClick={onClose}>
+                <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-2 sm:mx-0" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex justify-between items-center p-5 border-b border-gray-200">
+                        <h2 className="text-xl font-bold text-simon-blue">Edit Project</h2>
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Project Code</label>
+                            <input type="text" name="projectCode" value={formData.projectCode} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm py-3 px-3 focus:border-simon-orange focus:ring-simon-orange bg-white border-gray-300 text-gray-900 min-h-[44px]" required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Project Name</label>
+                            <input type="text" name="projectName" value={formData.projectName} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm py-3 px-3 focus:border-simon-orange focus:ring-simon-orange bg-white border-gray-300 text-gray-900 min-h-[44px]" required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Project Manager (Contractor)</label>
+                            <input type="text" name="projectManagerContractor" value={formData.projectManagerContractor} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm py-3 px-3 focus:border-simon-orange focus:ring-simon-orange bg-white border-gray-300 text-gray-900 min-h-[44px]" required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Project Manager (Client)</label>
+                            <input type="text" name="projectManagerClient" value={formData.projectManagerClient} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm py-3 px-3 focus:border-simon-orange focus:ring-simon-orange bg-white border-gray-300 text-gray-900 min-h-[44px]" required />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Client Name</label>
+                            <input type="text" name="clientName" value={formData.clientName} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm py-3 px-3 focus:border-simon-orange focus:ring-simon-orange bg-white border-gray-300 text-gray-900 min-h-[44px]" required />
+                        </div>
+                        <div className="flex justify-end space-x-3 pt-4">
+                            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                                Cancel
+                            </button>
+                            <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-simon-blue rounded-md hover:bg-simon-blue/90">
+                                Update Project
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        );
+    };
+
+    // Edit Contractor Modal
+    const EditContractorModal = ({ contractor, projects, onClose, onSave }) => {
+        const [formData, setFormData] = React.useState(contractor || {});
+        
+        React.useEffect(() => {
+            if (contractor) {
+                setFormData(contractor);
+            }
+        }, [contractor]);
+
+        const handleChange = (e) => {
+            setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+        };
+
+        const handleSubmit = (e) => {
+            e.preventDefault();
+            onSave(formData);
+        };
+
+        if (!contractor) return null;
+
+        return (
+            <div className="fixed inset-0 bg-white z-50 flex justify-center items-center p-2 sm:p-4" onClick={onClose}>
+                <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl mx-2 sm:mx-0" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex justify-between items-center p-5 border-b border-gray-200">
+                        <h2 className="text-xl font-bold text-simon-blue">Edit Contractor</h2>
+                        <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Project Code</label>
+                            <select name="project_code" value={formData.project_code} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm py-3 px-3 focus:border-simon-orange focus:ring-simon-orange bg-white border-gray-300 text-gray-900 min-h-[44px]" required>
+                                <option value="">Select Project</option>
+                                {projects.map(project => (
+                                    <option key={project.id} value={project.projectCode}>{project.projectCode} - {project.projectName}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Contractor Name</label>
+                            <input type="text" name="name" value={formData.name} onChange={handleChange} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm py-3 px-3 focus:border-simon-orange focus:ring-simon-orange bg-white border-gray-300 text-gray-900 min-h-[44px]" required />
+                        </div>
+                        <div className="flex justify-end space-x-3 pt-4">
+                            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                                Cancel
+                            </button>
+                            <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-simon-blue rounded-md hover:bg-simon-blue/90">
+                                Update Contractor
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        );
+    };
+    
+    // Main App Component
+    const App = ({ user, onLogout }) => {
+      const [observations, setObservations] = React.useState([]);
+      const [projects, setProjects] = React.useState([]);
+      const [subContractors, setSubContractors] = React.useState({});
+      
+      const [isModalOpen, setIsModalOpen] = React.useState(false);
+      const [selectedObservation, setSelectedObservation] = React.useState(null);
+      const [viewObservation, setViewObservation] = React.useState(null);
+      const [selectedMonth, setSelectedMonth] = React.useState('all');
+      const [selectedIssueType, setSelectedIssueType] = React.useState('all');
+      const [selectedSubContractor, setSelectedSubContractor] = React.useState('all');
+      const [selectedStatus, setSelectedStatus] = React.useState('all');
+
+      // Admin Modal State
+      const [isManageFieldsModalOpen, setManageFieldsModalOpen] = React.useState(false);
+      const [isProjectMgmtOpen, setIsProjectMgmtOpen] = React.useState(false);
+      const [isContractorMgmtOpen, setIsContractorMgmtOpen] = React.useState(false);
+      const [editingProject, setEditingProject] = React.useState(null);
+      const [editingContractor, setEditingContractor] = React.useState(null);
+
+      const fetchData = async () => {
+          try {
+              const res = await fetch('/api/data');
+              const data = await res.json();
+              setObservations(data.observations);
+              setProjects(data.projects);
+              setSubContractors(data.sub_contractors);
+          } catch (error) {
+              console.error("Failed to fetch data:", error);
+              alert("Could not connect to the backend server. Please ensure it's running.");
+          }
+      };
+
+      React.useEffect(() => {
+        fetchData();
+      }, []);
+      
+      const handleNewReport = () => {
+        setSelectedObservation(null);
+        setIsModalOpen(true);
+      };
+
+      const handleEditReport = (observation) => {
+        setSelectedObservation(observation);
+        setIsModalOpen(true);
+      };
+
+      const handleDeleteReport = (id) => {
+        if (window.confirm('Are you sure you want to delete this report?')) {
+            // TODO: API call to delete
+            setObservations(observations.filter(obs => obs.id !== id));
+        }
+      };
+
+      const handleSaveReport = async (observationData) => {
+            try {
+                if (selectedObservation) {
+                    const res = await fetch(`/api/observations/${selectedObservation.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(observationData),
+                    });
+                    if (!res.ok) {
+                        const errorData = await res.json();
+                        throw new Error(errorData.message || 'Failed to update observation');
+                    }
+                    const updated = await res.json();
+                    setObservations(observations.map(obs => obs.id === selectedObservation.id ? updated : obs));
+                } else {
+                    const res = await fetch('/api/observations', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(observationData),
+                    });
+                    if (!res.ok) {
+                        const errorData = await res.json();
+                        throw new Error(errorData.message || 'Failed to create observation');
+                    }
+                    const created = await res.json();
+                    setObservations([created, ...observations]);
+                }
+                setIsModalOpen(false);
+            } catch (err) {
+                console.error(err);
+                alert(`Failed to save observation: ${err.message}`);
+            }
+      };
+
+      const handleAddProject = async (projectData) => {
+        try {
+            const res = await fetch('/api/projects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(projectData),
+            });
+            if (res.ok) {
+                const newProject = await res.json();
+                setProjects(prev => [...prev, newProject]);
+                alert(`Project ${newProject.projectCode} added successfully!`);
+            } else {
+                const err = await res.json();
+                alert(`Failed to add project: ${err.message}`);
+            }
+        } catch (error) {
+            console.error("Error adding project:", error);
+            alert('An error occurred while adding the project.');
+        }
+      };
+
+      const handleAddContractor = async (contractorData) => {
+          try {
+              const res = await fetch('/api/subcontractors', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(contractorData)
+              });
+              if(res.ok) {
+                  const newContractor = await res.json();
+                  // Update local state to reflect the change instantly
+                  setSubContractors(prev => {
+                      const updated = { ...prev };
+                      if(!updated[newContractor.project_code]) {
+                          updated[newContractor.project_code] = [];
+                      }
+                      updated[newContractor.project_code].push(newContractor.name);
+                      return updated;
+                  });
+                  alert(`Contractor '${newContractor.name}' added to project ${newContractor.project_code}.`);
+
+              } else {
+                  const err = await res.json();
+                  alert(`Failed to add contractor: ${err.message}`);
+              }
+
+          } catch (error) {
+              console.error("Error adding contractor:", error);
+              alert('An error occurred while adding contractor.');
+          }
+      }
+      
+      const availableMonths = React.useMemo(() => {
+        const months = new Set(observations.map(obs => obs.date.substring(0, 7))); // YYYY-MM
+        return Array.from(months).sort().reverse();
+      }, [observations]);
+      
+      const availableSubContractors = React.useMemo(() => {
+        const subContractorsSet = new Set();
+        observations.forEach(obs => {
+            if (obs.subContractor) {
+                subContractorsSet.add(obs.subContractor);
+            }
+        });
+        return Array.from(subContractorsSet).sort();
+      }, [observations]);
+
+      const monthFilteredObservations = React.useMemo(() => {
+        if (selectedMonth === 'all') {
+          return observations;
+        }
+        return observations.filter(obs => obs.date.startsWith(selectedMonth));
+      }, [observations, selectedMonth]);
+      
+      const summaryCounts = React.useMemo(() => {
+        const counts = {
+          [IssueType.FATAL]: 0,
+          [IssueType.LTI]: 0,
+          [IssueType.MTI]: 0,
+          [IssueType.NEAR_MISS]: 0,
+          [IssueType.OBSERVATION]: 0,
+        };
+        for (const obs of monthFilteredObservations) {
+            if (counts.hasOwnProperty(obs.issueType)) {
+                counts[obs.issueType]++;
+            }
+        }
+        return {
+          total: monthFilteredObservations.length,
+          ...counts,
+        };
+      }, [monthFilteredObservations]);
+
+      const filteredObservations = React.useMemo(() => {
+        return monthFilteredObservations.filter(obs => {
+          const issueTypeMatch = selectedIssueType === 'all' || obs.issueType === selectedIssueType;
+          const subContractorMatch = selectedSubContractor === 'all' || obs.subContractor === selectedSubContractor;
+          const statusMatch = selectedStatus === 'all' || obs.status === selectedStatus;
+          return issueTypeMatch && subContractorMatch && statusMatch;
+        });
+      }, [monthFilteredObservations, selectedIssueType, selectedSubContractor, selectedStatus]);
+
+      const handleMonthChange = (e) => {
+        setSelectedMonth(e.target.value);
+      };
+      
+      const handleIssueTypeChange = (e) => {
+        setSelectedIssueType(e.target.value);
+      };
+
+      const handleSubContractorChange = (e) => {
+        setSelectedSubContractor(e.target.value);
+      };
+      
+      const handleStatusChange = (e) => {
+        setSelectedStatus(e.target.value);
+      };
+
+      // Project Management Functions
+      const handleEditProject = (project) => {
+        setEditingProject(project);
+        setIsProjectMgmtOpen(true);
+      };
+
+      const handleDeleteProject = async (projectId) => {
+        if (window.confirm('Are you sure you want to delete this project?')) {
+          try {
+            const res = await fetch(`/api/projects/${projectId}`, { method: 'DELETE' });
+            if (res.ok) {
+              setProjects(projects.filter(p => p.id !== projectId));
+              alert('Project deleted successfully');
+            } else {
+              const error = await res.json();
+              alert(`Failed to delete project: ${error.message}`);
+            }
+          } catch (error) {
+            alert('Error deleting project');
+          }
+        }
+      };
+
+      const handleUpdateProject = async (projectData) => {
+        try {
+          const res = await fetch(`/api/projects/${editingProject.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(projectData)
+          });
+          if (res.ok) {
+            const updated = await res.json();
+            setProjects(projects.map(p => p.id === editingProject.id ? updated : p));
+            setEditingProject(null);
+            setIsProjectMgmtOpen(false);
+            alert('Project updated successfully');
+          } else {
+            const error = await res.json();
+            alert(`Failed to update project: ${error.message}`);
+          }
+        } catch (error) {
+          alert('Error updating project');
+        }
+      };
+
+      // Contractor Management Functions
+      const handleEditContractor = (contractor) => {
+        setEditingContractor(contractor);
+        setIsContractorMgmtOpen(true);
+      };
+
+      const handleDeleteContractor = async (contractorId) => {
+        if (window.confirm('Are you sure you want to delete this contractor?')) {
+          try {
+            const res = await fetch(`/api/subcontractors/${contractorId}`, { method: 'DELETE' });
+            if (res.ok) {
+              // Update local state
+              const contractor = subContractors[editingContractor.project_code]?.find(c => c.id === contractorId);
+              if (contractor) {
+                setSubContractors(prev => ({
+                  ...prev,
+                  [contractor.project_code]: prev[contractor.project_code].filter(c => c.id !== contractorId)
+                }));
+              }
+              setEditingContractor(null);
+              setIsContractorMgmtOpen(false);
+              alert('Contractor deleted successfully');
+            } else {
+              const error = await res.json();
+              alert(`Failed to delete contractor: ${error.message}`);
+            }
+          } catch (error) {
+            alert('Error deleting contractor');
+          }
+        }
+      };
+
+      const handleUpdateContractor = async (contractorData) => {
+        try {
+          const res = await fetch(`/api/subcontractors/${editingContractor.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(contractorData)
+          });
+          if (res.ok) {
+            const updated = await res.json();
+            // Update local state
+            setSubContractors(prev => ({
+              ...prev,
+              [updated.project_code]: prev[updated.project_code].map(c => c.id === updated.id ? updated : c)
+            }));
+            setEditingContractor(null);
+            setIsContractorMgmtOpen(false);
+            alert('Contractor updated successfully');
+          } else {
+            const error = await res.json();
+            alert(`Failed to update contractor: ${error.message}`);
+          }
+        } catch (error) {
+          alert('Error updating contractor');
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
+          <Header onNewReport={handleNewReport} onManageFields={() => setManageFieldsModalOpen(true)} onLogout={onLogout} userRole={user.role} />
+          <main className="container mx-auto p-2 sm:p-4 md:p-8">
+            <SummaryCards counts={summaryCounts} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 my-4 p-3 sm:p-4 bg-white rounded-lg shadow">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                    <label htmlFor="month-filter" className="text-xs sm:text-sm font-medium text-gray-700">Filter by Month:</label>
+                    <select 
+                        id="month-filter"
+                        value={selectedMonth} 
+                        onChange={handleMonthChange}
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-simon-orange focus:ring-simon-orange bg-white border-gray-300 text-gray-900 text-sm py-2 px-3 min-h-[40px]"
+                    >
+                        <option value="all">All Months</option>
+                        {availableMonths.map(month => (
+                            <option key={month} value={month}>
+                                {new Date(month + '-02').toLocaleString('default', { month: 'long', year: 'numeric' })}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                    <label htmlFor="type-filter" className="text-xs sm:text-sm font-medium text-gray-700">Filter by Type:</label>
+                    <select 
+                        id="type-filter"
+                        value={selectedIssueType} 
+                        onChange={handleIssueTypeChange}
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-simon-orange focus:ring-simon-orange bg-white border-gray-300 text-gray-900 text-sm py-2 px-3 min-h-[40px]"
+                    >
+                        <option value="all">All Types</option>
+                        {Object.values(IssueType).map(type => (
+                            <option key={type} value={type}>{type}</option>
+                        ))}
+                    </select>
+                </div>
+                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                    <label htmlFor="subcontractor-filter" className="text-xs sm:text-sm font-medium text-gray-700">Filter by Sub-contractor:</label>
+                    <select 
+                        id="subcontractor-filter"
+                        value={selectedSubContractor} 
+                        onChange={handleSubContractorChange}
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-simon-orange focus:ring-simon-orange bg-white border-gray-300 text-gray-900 text-sm py-2 px-3 min-h-[40px]"
+                        disabled={availableSubContractors.length === 0}
+                    >
+                        <option value="all">All Sub-contractors</option>
+                        {availableSubContractors.map(sc => (
+                            <option key={sc} value={sc}>{sc}</option>
+                        ))}
+                    </select>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                    <label htmlFor="status-filter" className="text-xs sm:text-sm font-medium text-gray-700">Filter by Status:</label>
+                    <select 
+                        id="status-filter"
+                        value={selectedStatus} 
+                        onChange={handleStatusChange}
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-simon-orange focus:ring-simon-orange bg-white border-gray-300 text-gray-900 text-sm py-2 px-3 min-h-[40px]"
+                    >
+                        <option value="all">All Statuses</option>
+                        <option value={Status.OPEN}>Open</option>
+                        <option value={Status.CLOSED}>Closed</option>
+                    </select>
+                </div>
+            </div>
+            <ObservationTable
+              observations={filteredObservations}
+              onEdit={handleEditReport}
+              onDelete={handleDeleteReport}
+              onView={setViewObservation}
+              userRole={user.role}
+            />
+          </main>
+          {isModalOpen && (
+            <ObservationFormModal
+              observation={selectedObservation}
+              onClose={() => setIsModalOpen(false)}
+              onSave={handleSaveReport}
+              projects={projects}
+              subContractors={subContractors}
+            />
+          )}
+          {viewObservation && (
+            <ViewObservationModal observation={viewObservation} onClose={() => setViewObservation(null)} />
+          )}
+          <ManageFieldsModal
+            isOpen={isManageFieldsModalOpen}
+            onClose={() => setManageFieldsModalOpen(false)}
+            onSaveProject={handleAddProject}
+            onSaveContractor={handleAddContractor}
+            projects={projects}
+            subContractors={subContractors}
+            onEditProject={handleEditProject}
+            onDeleteProject={handleDeleteProject}
+            onEditContractor={handleEditContractor}
+            onDeleteContractor={handleDeleteContractor}
+          />
+          {editingProject && (
+            <EditProjectModal
+              project={editingProject}
+              onClose={() => setEditingProject(null)}
+              onSave={handleUpdateProject}
+            />
+          )}
+          {editingContractor && (
+            <EditContractorModal
+              contractor={editingContractor}
+              projects={projects}
+              onClose={() => setEditingContractor(null)}
+              onSave={handleUpdateContractor}
+            />
+          )}
+        </div>
+      );
+    };
+
+    // LoginScreen Component
+    const LoginScreen = ({ onLogin, onPublicAccess }) => {
+        const [username, setUsername] = React.useState('');
+        const [password, setPassword] = React.useState('');
+        const [showPassword, setShowPassword] = React.useState(false);
+        const [error, setError] = React.useState('');
+
+        const handleSubmit = async (e) => {
+            e.preventDefault();
+            setError('');
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+                if (response.ok) {
+                    const user = await response.json();
+                    onLogin(user);
+                } else {
+                    const errData = await response.json();
+                    setError(errData.message || 'Invalid credentials');
+                }
+            } catch (err) {
+                setError('An error occurred. Please try again.');
+            }
+        };
+
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-100 fade-in p-4">
+                <div className="w-full max-w-md p-6 sm:p-8 space-y-6 sm:space-y-8 bg-white rounded-2xl shadow-lg">
+                    <div className="text-center">
+                        <img src="https://simonindia.com/assets/images/logo.png" alt="Simon India Logo" className="w-48 mx-auto mb-4"/>
+                        <h2 className="text-2xl font-bold text-gray-900">Safety Incident Reporting</h2>
+                        <p className="mt-2 text-sm text-gray-600">Please sign in to continue</p>
+                    </div>
+                    <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                         {error && <p className="text-center text-sm text-red-500">{error}</p>}
+                        <div className="rounded-md shadow-sm -space-y-px">
+                            <div>
+                                <input id="username" name="username" type="text" required
+                                    className="appearance-none rounded-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-simon-orange focus:border-simon-orange focus:z-10 text-sm bg-white min-h-[44px]"
+                                    placeholder="Username (admin@simonindia.ai or safety@simonindia.ai)"
+                                    value={username} onChange={(e) => setUsername(e.target.value)} />
+                            </div>
+                            <div className="relative">
+                                <input id="password" name="password" type={showPassword ? "text" : "password"} required
+                                    className="appearance-none rounded-none relative block w-full px-3 py-3 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-simon-orange focus:border-simon-orange focus:z-10 text-sm bg-white min-h-[44px]"
+                                    placeholder="Password"
+                                    value={password} onChange={(e) => setPassword(e.target.value)} />
+                                <button
+                                    type="button"
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                >
+                                    {showPassword ? (
+                                        <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                                        </svg>
+                                    ) : (
+                                        <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <button type="submit"
+                                className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-simon-blue hover:bg-simon-blue/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-simon-orange min-h-[44px]">
+                                Sign in
+                            </button>
+                        </div>
+                    </form>
+                    <div className="text-center">
+                        <button onClick={onPublicAccess} className="font-medium text-sm text-simon-orange hover:text-simon-orange/90">
+                           Want to Raise any Safety Incident ?
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    // Main Component to handle routing
+    const Main = () => {
+        const [user, setUser] = React.useState(null);
+
+        if (!user) {
+            return <LoginScreen 
+                        onLogin={setUser} 
+                        onPublicAccess={() => setUser({ username: 'Public User', role: UserRole.PUBLIC })} 
+                    />
+        }
+
+        return <App user={user} onLogout={() => setUser(null)} />;
+    }
+
+    const rootElement = document.getElementById('root');
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(<Main />);
+
+    </script>
+  </body>
+</html>
