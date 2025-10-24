@@ -321,6 +321,18 @@ def update_observation(obs_id: int):
         db.session.rollback()
         return jsonify({"message": f"Failed to update observation: {str(e)}"}), 500
 
+@app.route('/api/observations/<int:obs_id>', methods=['DELETE'])
+def delete_observation(obs_id: int):
+    try:
+        observation = Observation.query.get_or_404(obs_id)
+        db.session.delete(observation)
+        db.session.commit()
+        return jsonify({"message": "Observation deleted successfully"})
+    except Exception as e:
+        print(f"Error deleting observation: {str(e)}")
+        db.session.rollback()
+        return jsonify({"message": f"Failed to delete observation: {str(e)}"}), 500
+
 # Project Management APIs
 @app.route('/api/projects/<int:project_id>', methods=['PUT'])
 def update_project(project_id: int):
@@ -413,6 +425,3 @@ def delete_subcontractor(subcontractor_id: int):
 if __name__ == '__main__':
     setup_database(app)
     app.run(debug=False, host='0.0.0.0', port=5000)
-
-
-
