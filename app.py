@@ -1,9 +1,12 @@
-from flask import Flask, request, jsonify, render_template, send_from_directory
+from flask import Flask, request, jsonify, render_template, send_from_directory, make_response
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from uuid import uuid4
 import base64
 import os
+import csv
+import io
+from datetime import datetime
 
 # --- App Configuration ---
 app = Flask(__name__)
@@ -420,6 +423,95 @@ def delete_subcontractor(subcontractor_id: int):
         print(f"Error deleting subcontractor: {str(e)}")
         db.session.rollback()
         return jsonify({"message": f"Failed to delete subcontractor: {str(e)}"}), 500
+
+@app.route('/api/export-excel', methods=['GET'])
+def export_excel():
+    try:
+        observations = Observation.query.order_by(Observation.id.desc()).all()
+        
+        # Create CSV in memory
+        output = io.StringIO()
+        writer = csv.writer(output)
+        
+        # Write headers
+        headers = ['Sl No.', 'Date', 'Raised By', 'Issue Type', 'Category', 'Observation', 
+                  'Contractor', 'Sub-contractor', 'Status', 'Compliance', 'Compliance Date', 
+                  'Observation Photo', 'Compliance Photo']
+        writer.writerow(headers)
+        
+        # Write data rows
+        for idx, obs in enumerate(observations, 1):
+            # Format date
+            date_str = ''
+            if obs.date:
+                try:
+                    if isinstance(obs.date, str):
+                        date_str = obs.date
+                    else:
+                        date_str = obs.date.strftime('%Y-%m-%d')
+                except:
+                    date_str = str(obs.date)
+            
+            # Format compliance date
+            compliance_date_str = ''
+            if obs.complianceDate:
+                try:
+                    if isinstance(obs.complianceDate, str):
+                        compliance_date_str = obs.complianceDate
+                    else:
+                        compliance_date_str = obs.complianceDate.strftime('%Y-%m-%d')
+                except:
+                    compliance_date_str = str(obs.complianceDate)
+            
+            # Build observation photo URL
+            observation_photo_url = ''
+            if obs.observationPhoto:
+                if obs.observationPhoto.startswith('http'):
+                    observation_photo_url = obs.observationPhoto
+                elif obs.observationPhoto.startswith('/uploads/'):
+                    base_url = request.url_root.rstrip('/')
+                    observation_photo_url = f'{base_url}{obs.observationPhoto}'
+                else:
+                    observation_photo_url = obs.observationPhoto
+            
+            # Build compliance photo URL
+            compliance_photo_url = ''
+            if obs.compliancePhoto:
+                if obs.compliancePhoto.startswith('http'):
+                    compliance_photo_url = obs.compliancePhoto
+                elif obs.compliancePhoto.startswith('/uploads/'):
+                    base_url = request.url_root.rstrip('/')
+                    compliance_photo_url = f'{base_url}{obs.compliancePhoto}'
+                else:
+                    compliance_photo_url = obs.compliancePhoto
+            
+            row = [
+                idx,
+                date_str,
+                obs.raisedBy or '',
+                obs.issueType or '',
+                obs.safetyCategory or '',
+                obs.observation or '',
+                obs.contractor or 'SIL',
+                obs.subContractor or '',
+                obs.status or '',
+                obs.compliance or '',
+                compliance_date_str,
+                observation_photo_url,
+                compliance_photo_url
+            ]
+            writer.writerow(row)
+        
+        # Create response
+        response = make_response(output.getvalue())
+        response.headers['Content-Type'] = 'text/csv'
+        response.headers['Content-Disposition'] = f'attachment; filename=safety_observations_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+        
+        return response
+        
+    except Exception as e:
+        print(f"Error exporting observations: {str(e)}")
+        return jsonify({"message": f"Failed to export observations: {str(e)}"}), 500
 
 
 if __name__ == '__main__':
