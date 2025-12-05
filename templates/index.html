@@ -325,7 +325,7 @@
                     <td className="px-6 py-4">
                         <div className="flex flex-col space-y-1">
                             {obs.observationPhoto && <PhotoLink url={obs.observationPhoto} label="Obs. Photo" />}
-                            {obs.issueType === IssueType.OBSERVATION && obs.compliancePhoto && <PhotoLink url={obs.compliancePhoto} label="Comp. Photo" />}
+                            {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && obs.compliancePhoto && <PhotoLink url={obs.compliancePhoto} label="Comp. Photo" />}
                         </div>
                     </td>
                     <td className="px-6 py-4">
@@ -333,7 +333,7 @@
                         <button onClick={() => onView(obs)} className="text-simon-blue hover:text-simon-blue/80" title="View">
                           <EyeIcon />
                         </button>
-                        {obs.issueType === IssueType.OBSERVATION ? (
+                        {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) ? (
                           <button onClick={() => handleEditClick(obs)} className={`text-simon-blue/80 hover:text-simon-blue ${!canEdit && 'cursor-not-allowed opacity-50'}`} title="Edit">
                             <EditIcon />
                           </button>
@@ -404,12 +404,12 @@
                               <p className="text-sm text-gray-700 break-words">{obs.compliance}</p>
                           </div>
                       )}
-                      {(obs.observationPhoto || (obs.issueType === IssueType.OBSERVATION && obs.compliancePhoto)) && (
+                      {(obs.observationPhoto || ((obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && obs.compliancePhoto)) && (
                          <div>
                             <p className="text-xs font-semibold text-gray-500">Attachments:</p>
                             <div className="flex items-center gap-4 mt-1">
                                 {obs.observationPhoto && <PhotoLink url={obs.observationPhoto} label="Observation" />}
-                                {obs.issueType === IssueType.OBSERVATION && obs.compliancePhoto && <PhotoLink url={obs.compliancePhoto} label="Compliance" />}
+                                {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && obs.compliancePhoto && <PhotoLink url={obs.compliancePhoto} label="Compliance" />}
                             </div>
                         </div>
                       )}
@@ -421,7 +421,7 @@
                           <EyeIcon />
                           View
                       </button>
-                      {obs.issueType === IssueType.OBSERVATION && (
+                      {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && (
                         <button onClick={() => handleEditClick(obs)} className={`flex items-center gap-1 text-sm text-simon-blue/90 hover:text-simon-blue font-medium py-1 px-2 rounded-md hover:bg-gray-100 transition-colors ${!canEdit && 'cursor-not-allowed opacity-50'}`}>
                             <EditIcon />
                             Edit
@@ -611,7 +611,7 @@
             ) {
                 hasErrors = true;
             }
-        } else if (formData.issueType === IssueType.OBSERVATION) { // Validation for compliance details on edit
+        } else if (formData.issueType === IssueType.OBSERVATION || formData.issueType === IssueType.NEAR_MISS) { // Validation for compliance details on edit
             const originalObservation = observation;
             const hasComplianceChanged =
                 (formData.compliance || '') !== (originalObservation.compliance || '') ||
@@ -677,7 +677,7 @@
           <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[95vh] sm:max-h-[90vh] flex flex-col mx-2 sm:mx-0" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-between items-center p-5 border-b border-gray-200">
                 <h2 className="text-xl font-bold text-simon-blue">
-                    {isEditing ? 'Edit Observation / Add Compliance' : 'Record a Safety Incident'}
+                    {isEditing ? 'Edit Incident / Add Compliance' : 'Record a Safety Incident'}
                 </h2>
                 <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -755,6 +755,7 @@
                                     <option value="Client">Client</option>
                                     <option value="EPC Contractor">EPC Contractor</option>
                                     <option value="Sub-contractor">Sub-contractor</option>
+                                    <option value="SIL HO">SIL HO</option>
                                 </select>
                             </div>
                             <div className="md:col-span-1">
@@ -847,8 +848,8 @@
                     </div>
                 </div>
                 
-                {/* Compliance Details - ONLY SHOWN IN EDIT MODE FOR OBSERVATIONS */}
-                {isEditing && formData.issueType === IssueType.OBSERVATION && (
+                {/* Compliance Details - ONLY SHOWN IN EDIT MODE FOR OBSERVATIONS AND NEAR MISS */}
+                {isEditing && (formData.issueType === IssueType.OBSERVATION || formData.issueType === IssueType.NEAR_MISS) && (
                     <React.Fragment>
                         <div className="md:col-span-3 text-base sm:text-lg font-semibold text-simon-blue border-b pb-2 mt-6 mb-4 border-gray-200">Compliance Details</div>
                         <p className="md:col-span-3 text-xs sm:text-sm text-gray-500 dark:text-gray-400 -mt-2 mb-4">
@@ -895,8 +896,12 @@
     };
 
     // ViewObservationModal Component (read-only)
-    const ViewObservationModal = ({ observation, onClose }) => {
+    const ViewObservationModal = ({ observation, onClose, projects = [] }) => {
         if (!observation) return null;
+        
+        // Find project details based on projectCode
+        const projectDetails = projects.find(p => p.projectCode === observation.projectCode);
+        
         return (
             <div className="fixed inset-0 bg-white z-50 flex justify-center items-center p-2 sm:p-4" onClick={onClose}>
                 <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl max-h-[95vh] overflow-y-auto mx-2 sm:mx-0" onClick={(e) => e.stopPropagation()}>
@@ -907,6 +912,44 @@
                         </button>
                     </div>
                     <div className="p-6 space-y-4">
+                        {/* Project Details Section */}
+                        {observation.projectCode && (
+                            <div className="border-b pb-4 mb-4">
+                                <h3 className="text-base font-semibold text-simon-blue mb-3">Project Details</h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-xs text-gray-500">Project Code</p>
+                                        <p className="text-sm font-medium">{observation.projectCode}</p>
+                                    </div>
+                                    {projectDetails?.projectName && (
+                                        <div>
+                                            <p className="text-xs text-gray-500">Project Name</p>
+                                            <p className="text-sm font-medium">{projectDetails.projectName}</p>
+                                        </div>
+                                    )}
+                                    {projectDetails?.clientName && (
+                                        <div>
+                                            <p className="text-xs text-gray-500">Client Name</p>
+                                            <p className="text-sm font-medium">{projectDetails.clientName}</p>
+                                        </div>
+                                    )}
+                                    {projectDetails?.projectManagerContractor && (
+                                        <div>
+                                            <p className="text-xs text-gray-500">Project Manager (Contractor)</p>
+                                            <p className="text-sm font-medium">{projectDetails.projectManagerContractor}</p>
+                                        </div>
+                                    )}
+                                    {projectDetails?.projectManagerClient && (
+                                        <div>
+                                            <p className="text-xs text-gray-500">Project Manager (Client)</p>
+                                            <p className="text-sm font-medium">{projectDetails.projectManagerClient}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* Observation Details Section */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <p className="text-xs text-gray-500">Date</p>
@@ -1385,6 +1428,7 @@
       const [selectedIssueType, setSelectedIssueType] = React.useState('all');
       const [selectedSubContractor, setSelectedSubContractor] = React.useState('all');
       const [selectedStatus, setSelectedStatus] = React.useState('all');
+      const [selectedProjectCode, setSelectedProjectCode] = React.useState('all');
 
       // Admin Modal State
       const [isManageFieldsModalOpen, setManageFieldsModalOpen] = React.useState(false);
@@ -1539,6 +1583,16 @@
         return Array.from(subContractorsSet).sort();
       }, [observations]);
 
+      const availableProjectCodes = React.useMemo(() => {
+        const projectCodesSet = new Set();
+        observations.forEach(obs => {
+            if (obs.projectCode) {
+                projectCodesSet.add(obs.projectCode);
+            }
+        });
+        return Array.from(projectCodesSet).sort();
+      }, [observations]);
+
       const monthFilteredObservations = React.useMemo(() => {
         if (selectedMonth === 'all') {
           return observations;
@@ -1570,9 +1624,10 @@
           const issueTypeMatch = selectedIssueType === 'all' || obs.issueType === selectedIssueType;
           const subContractorMatch = selectedSubContractor === 'all' || obs.subContractor === selectedSubContractor;
           const statusMatch = selectedStatus === 'all' || obs.status === selectedStatus;
-          return issueTypeMatch && subContractorMatch && statusMatch;
+          const projectCodeMatch = selectedProjectCode === 'all' || obs.projectCode === selectedProjectCode;
+          return issueTypeMatch && subContractorMatch && statusMatch && projectCodeMatch;
         });
-      }, [monthFilteredObservations, selectedIssueType, selectedSubContractor, selectedStatus]);
+      }, [monthFilteredObservations, selectedIssueType, selectedSubContractor, selectedStatus, selectedProjectCode]);
 
       const handleMonthChange = (e) => {
         setSelectedMonth(e.target.value);
@@ -1588,6 +1643,10 @@
       
       const handleStatusChange = (e) => {
         setSelectedStatus(e.target.value);
+      };
+
+      const handleProjectCodeChange = (e) => {
+        setSelectedProjectCode(e.target.value);
       };
 
       const handleDownloadExcel = () => {
@@ -1718,7 +1777,7 @@
           <Header onNewReport={handleNewReport} onManageFields={() => setManageFieldsModalOpen(true)} onLogout={onLogout} onLogin={onLogin} userRole={user.role} />
           <main className="container mx-auto p-2 sm:p-4 md:p-8">
             <SummaryCards counts={summaryCounts} />
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 my-4 p-3 sm:p-4 bg-white rounded-lg shadow">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 my-4 p-3 sm:p-4 bg-white rounded-lg shadow">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                     <label htmlFor="month-filter" className="text-xs sm:text-sm font-medium text-gray-700">Filter by Month:</label>
                     <select 
@@ -1732,6 +1791,21 @@
                             <option key={month} value={month}>
                                 {new Date(month + '-02').toLocaleString('default', { month: 'long', year: 'numeric' })}
                             </option>
+                        ))}
+                    </select>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                    <label htmlFor="project-code-filter" className="text-xs sm:text-sm font-medium text-gray-700">Filter by Project Code:</label>
+                    <select 
+                        id="project-code-filter"
+                        value={selectedProjectCode} 
+                        onChange={handleProjectCodeChange}
+                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-simon-orange focus:ring-simon-orange bg-white border-gray-300 text-gray-900 text-sm py-2 px-3 min-h-[40px]"
+                        disabled={availableProjectCodes.length === 0}
+                    >
+                        <option value="all">All Project Codes</option>
+                        {availableProjectCodes.map(code => (
+                            <option key={code} value={code}>{code}</option>
                         ))}
                     </select>
                 </div>
@@ -1807,7 +1881,7 @@
             />
           )}
           {viewObservation && (
-            <ViewObservationModal observation={viewObservation} onClose={() => setViewObservation(null)} />
+            <ViewObservationModal observation={viewObservation} onClose={() => setViewObservation(null)} projects={projects} />
           )}
           <ManageFieldsModal
             isOpen={isManageFieldsModalOpen}
