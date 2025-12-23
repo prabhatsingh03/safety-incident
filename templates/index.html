@@ -59,9 +59,11 @@
 
     // Enums and Types
     const IssueType = {
+      FIRE: 'Fire',
+      RWC: 'RWC',
+      MTC: 'MTC',
       FATAL: 'Fatal',
       LTI: 'LTI',
-      MTI: 'MTI',
       NEAR_MISS: 'Near Miss',
       OBSERVATION: 'Observation',
     };
@@ -233,9 +235,11 @@
       return (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-4">
           <SummaryCard title="Total Incidents" count={counts.total} icon={<ClipboardListIcon />} color="border-simon-blue" />
+          <SummaryCard title="Fire" count={counts[IssueType.FIRE]} icon={<ExclamationTriangleIcon />} color="border-red-500" />
+          <SummaryCard title="RWC" count={counts[IssueType.RWC]} icon={<UserMinusIcon />} color="border-orange-500" />
+          <SummaryCard title="MTC" count={counts[IssueType.MTC]} icon={<FirstAidIcon />} color="border-yellow-500" />
           <SummaryCard title="Fatal" count={counts[IssueType.FATAL]} icon={<HeartBrokenIcon />} color="border-red-500" />
           <SummaryCard title="LTI" count={counts[IssueType.LTI]} icon={<UserMinusIcon />} color="border-orange-500" />
-          <SummaryCard title="MTI" count={counts[IssueType.MTI]} icon={<FirstAidIcon />} color="border-yellow-500" />
           <SummaryCard title="Near Miss" count={counts[IssueType.NEAR_MISS]} icon={<ExclamationTriangleIcon />} color="border-purple-500" />
           <SummaryCard title="Observations" count={counts[IssueType.OBSERVATION]} icon={<EyeIcon />} color="border-green-500" />
         </div>
@@ -325,7 +329,20 @@
                     <td className="px-6 py-4">
                         <div className="flex flex-col space-y-1">
                             {obs.observationPhoto && <PhotoLink url={obs.observationPhoto} label="Obs. Photo" />}
-                            {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && obs.compliancePhoto && <PhotoLink url={obs.compliancePhoto} label="Comp. Photo" />}
+                            {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && obs.compliancePhoto && (
+                                <PhotoLink url={obs.compliancePhoto} label="Comp. Photo" />
+                            )}
+                            {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && obs.complianceReport && (
+                                <a
+                                    href={obs.complianceReport}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                                >
+                                    <PhotoIcon />
+                                    Compliance Report
+                                </a>
+                            )}
                         </div>
                     </td>
                     <td className="px-6 py-4">
@@ -404,12 +421,25 @@
                               <p className="text-sm text-gray-700 break-words">{obs.compliance}</p>
                           </div>
                       )}
-                      {(obs.observationPhoto || ((obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && obs.compliancePhoto)) && (
+                      {(obs.observationPhoto || ((obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && (obs.compliancePhoto || obs.complianceReport))) && (
                          <div>
                             <p className="text-xs font-semibold text-gray-500">Attachments:</p>
                             <div className="flex items-center gap-4 mt-1">
                                 {obs.observationPhoto && <PhotoLink url={obs.observationPhoto} label="Observation" />}
-                                {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && obs.compliancePhoto && <PhotoLink url={obs.compliancePhoto} label="Compliance" />}
+                                {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && obs.compliancePhoto && (
+                                    <PhotoLink url={obs.compliancePhoto} label="Compliance" />
+                                )}
+                                {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && obs.complianceReport && (
+                                    <a
+                                        href={obs.complianceReport}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                                    >
+                                        <PhotoIcon />
+                                        Compliance Report
+                                    </a>
+                                )}
                             </div>
                         </div>
                       )}
@@ -442,7 +472,7 @@
     };
 
     // ObservationFormModal Component
-    const PhotoInput = ({ label, photo, onPhotoChange, onViewClick, required }) => {
+    const PhotoInput = ({ label, photo, onPhotoChange, onViewClick, required, canChange = true }) => {
         const [preview, setPreview] = React.useState(photo);
 
         React.useEffect(() => {
@@ -475,14 +505,74 @@
                         <div className="w-24 h-24 rounded-lg bg-gray-200 flex items-center justify-center text-gray-400 text-xs">No Image</div>
                     )}
                     <div className="flex items-center gap-2">
-                        <input type="file" id={`file-input-${label}`} accept="image/*" onChange={handleFileChange} className="hidden" />
-                        <label htmlFor={`file-input-${label}`} className="cursor-pointer text-sm font-semibold py-2 px-4 rounded-full bg-orange-100 text-simon-orange hover:bg-orange-200">Choose File</label>
+                        {canChange && (
+                            <React.Fragment>
+                                <input
+                                    type="file"
+                                    id={`file-input-${label}`}
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                />
+                                <label
+                                    htmlFor={`file-input-${label}`}
+                                    className="cursor-pointer text-sm font-semibold py-2 px-4 rounded-full bg-orange-100 text-simon-orange hover:bg-orange-200"
+                                >
+                                    Choose File
+                                </label>
+                            </React.Fragment>
+                        )}
                         {preview && (
-                            <button type="button" onClick={() => onViewClick(preview)} className="text-sm font-semibold py-2 px-4 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300">
+                            <button
+                                type="button"
+                                onClick={() => onViewClick(preview)}
+                                className="text-sm font-semibold py-2 px-4 rounded-full bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            >
                                View
                             </button>
                         )}
                     </div>
+                </div>
+            </div>
+        );
+    };
+
+    // Generic file input for non-image uploads (e.g., PDF reports)
+    const FileInput = ({ label, value, onFileChange, required, accept = 'application/pdf' }) => {
+        const [fileLabel, setFileLabel] = React.useState(value ? 'File selected' : 'No file selected');
+
+        React.useEffect(() => {
+            setFileLabel(value ? 'File selected' : 'No file selected');
+        }, [value]);
+
+        const handleFileChange = (e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    const base64String = reader.result;
+                    onFileChange(base64String);
+                    setFileLabel(file.name);
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        return (
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {label}
+                    {required && <span className="text-red-500 ml-1">*</span>}
+                </label>
+                <div className="mt-1 flex items-center gap-3">
+                    <input
+                        type="file"
+                        id={`file-input-${label}`}
+                        accept={accept}
+                        onChange={handleFileChange}
+                        className="text-sm"
+                    />
+                    <span className="text-xs text-gray-500 truncate max-w-xs">{fileLabel}</span>
                 </div>
             </div>
         );
@@ -507,6 +597,7 @@
         compliance: '',
         complianceDate: '',
         compliancePhoto: '',
+        complianceReport: '',
         history: [],
     });
 
@@ -537,7 +628,7 @@
             </div>
         </div>
     );
-    const ObservationFormModal = ({ observation, onClose, onSave, projects, subContractors }) => {
+    const ObservationFormModal = ({ observation, onClose, onSave, projects, subContractors, userRole }) => {
       const [formData, setFormData] = React.useState(getInitialFormData());
       const [viewingPhoto, setViewingPhoto] = React.useState(null);
       const [raisedBySource, setRaisedBySource] = React.useState('');
@@ -611,22 +702,37 @@
             ) {
                 hasErrors = true;
             }
-        } else if (formData.issueType === IssueType.OBSERVATION || formData.issueType === IssueType.NEAR_MISS) { // Validation for compliance details on edit
+        } else if (formData.issueType) { // Validation for compliance details on edit
             const originalObservation = observation;
             const hasComplianceChanged =
                 (formData.compliance || '') !== (originalObservation.compliance || '') ||
                 (formData.complianceDate || '') !== (originalObservation.complianceDate || '') ||
                 (formData.compliancePhoto || '') !== (originalObservation.compliancePhoto || '') ||
+                (formData.complianceReport || '') !== (originalObservation.complianceReport || '') ||
                 formData.status !== originalObservation.status;
 
             if (hasComplianceChanged) {
-                if (
-                    !formData.compliance?.trim() ||
-                    !formData.complianceDate ||
-                    !formData.compliancePhoto ||
-                    !formData.status
-                ) {
-                    hasErrors = true;
+                // For Observation: compliance, date, photo, status required (no Incident Report)
+                if (formData.issueType === IssueType.OBSERVATION) {
+                    if (
+                        !formData.compliance?.trim() ||
+                        !formData.complianceDate ||
+                        !formData.compliancePhoto ||
+                        !formData.status
+                    ) {
+                        hasErrors = true;
+                    }
+                } else {
+                    // For all other incident types: Incident Report PDF also mandatory
+                    if (
+                        !formData.compliance?.trim() ||
+                        !formData.complianceDate ||
+                        !formData.compliancePhoto ||
+                        !formData.status ||
+                        !formData.complianceReport
+                    ) {
+                        hasErrors = true;
+                    }
                 }
             }
         }
@@ -636,15 +742,24 @@
             return;
         }
 
-        // --- If validation passes, proceed to save ---
+        // --- If validation passes, show confirmation before save ---
+        const confirmed = window.confirm('Are you sure you want to save this report?');
+        if (!confirmed) {
+            return;
+        }
+
+        // --- If confirmed, proceed to save ---
         const finalObservation = { ...formData };
         if (!isEditing) {
             finalObservation.raisedBy = `${raisedBySource} - ${raisedByName.trim()}`;
         }
         
         // Remove fields that don't exist in the database model
-        const validFields = ['projectCode', 'date', 'raisedBy', 'issueType', 'safetyCategory', 'observation', 
-                            'observationPhoto', 'contractor', 'subContractor', 'status', 'compliance', 'complianceDate', 'compliancePhoto'];
+        const validFields = [
+            'projectCode', 'date', 'raisedBy', 'issueType', 'safetyCategory', 'observation',
+            'observationPhoto', 'contractor', 'subContractor', 'status',
+            'compliance', 'complianceDate', 'compliancePhoto', 'complianceReport'
+        ];
         
         const cleanedData = {};
         validFields.forEach(field => {
@@ -844,12 +959,19 @@
                         <textarea name="observation" id="observation" rows={3} value={formData.observation} onChange={handleChange} readOnly={isEditing} placeholder="Describe the observation in detail..." className={`${commonInputClasses} ${isEditing ? readOnlyClasses : editableClasses}`}></textarea>
                     </div>
                      <div className="md:col-span-3">
-                        <PhotoInput label="Observation Photo" required={!isEditing} photo={formData.observationPhoto} onPhotoChange={(base64) => handlePhotoChange('observationPhoto', base64)} onViewClick={setViewingPhoto} />
+                        <PhotoInput
+                            label="Observation Photo"
+                            required={!isEditing}
+                            photo={formData.observationPhoto}
+                            onPhotoChange={(base64) => handlePhotoChange('observationPhoto', base64)}
+                            onViewClick={setViewingPhoto}
+                            canChange={!isEditing || userRole === UserRole.ADMIN}
+                        />
                     </div>
                 </div>
                 
-                {/* Compliance Details - ONLY SHOWN IN EDIT MODE FOR OBSERVATIONS AND NEAR MISS */}
-                {isEditing && (formData.issueType === IssueType.OBSERVATION || formData.issueType === IssueType.NEAR_MISS) && (
+                {/* Compliance Details - SHOWN IN EDIT MODE FOR ALL ISSUE TYPES */}
+                {isEditing && formData.issueType && (
                     <React.Fragment>
                         <div className="md:col-span-3 text-base sm:text-lg font-semibold text-simon-blue border-b pb-2 mt-6 mb-4 border-gray-200">Compliance Details</div>
                         <p className="md:col-span-3 text-xs sm:text-sm text-gray-500 dark:text-gray-400 -mt-2 mb-4">
@@ -874,6 +996,16 @@
                             <div className="md:col-span-3">
                                 <PhotoInput label="Compliance Photo" required photo={formData.compliancePhoto} onPhotoChange={(base64) => handlePhotoChange('compliancePhoto', base64)} onViewClick={setViewingPhoto} />
                             </div>
+                            {formData.issueType !== IssueType.OBSERVATION && (
+                              <div className="md:col-span-3">
+                                  <FileInput
+                                      label="Incident Report (PDF) *"
+                                      value={formData.complianceReport}
+                                      onFileChange={(base64) => handlePhotoChange('complianceReport', base64)}
+                                      accept="application/pdf"
+                                  />
+                              </div>
+                            )}
                         </div>
                     </React.Fragment>
                 )}
@@ -1007,6 +1139,20 @@
                                 <div>
                                     <p className="text-xs text-gray-500 mb-2">Compliance Photo</p>
                                     <img src={observation.compliancePhoto} alt="Compliance" className="w-full max-h-72 object-contain rounded-md border" />
+                                </div>
+                            )}
+                            {observation.complianceReport && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-2">Compliance Report</p>
+                                    <a
+                                        href={observation.complianceReport}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                                    >
+                                        <PhotoIcon />
+                                        View Incident Report (PDF)
+                                    </a>
                                 </div>
                             )}
                         </div>
@@ -1602,9 +1748,11 @@
       
       const summaryCounts = React.useMemo(() => {
         const counts = {
+          [IssueType.FIRE]: 0,
+          [IssueType.RWC]: 0,
+          [IssueType.MTC]: 0,
           [IssueType.FATAL]: 0,
           [IssueType.LTI]: 0,
-          [IssueType.MTI]: 0,
           [IssueType.NEAR_MISS]: 0,
           [IssueType.OBSERVATION]: 0,
         };
@@ -1878,6 +2026,7 @@
               onSave={handleSaveReport}
               projects={projects}
               subContractors={subContractors}
+              userRole={user.role}
             />
           )}
           {viewObservation && (
