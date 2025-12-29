@@ -672,6 +672,15 @@
 
       const handleChange = (e) => {
         const { name, value } = e.target;
+        if (name === 'issueType') {
+            // Clear safetyCategory if issueType is not Observation
+            setFormData(prev => ({
+                ...prev,
+                issueType: value,
+                safetyCategory: value === IssueType.OBSERVATION ? prev.safetyCategory : ''
+            }));
+            return;
+        }
         if (name === 'projectCode') {
             const projectDetails = projects.find(p => p.projectCode === value);
             setFormData(prev => ({
@@ -706,7 +715,7 @@
                 !raisedBySource ||
                 !raisedByName.trim() ||
                 !formData.issueType ||
-                !formData.safetyCategory ||
+                (formData.issueType === IssueType.OBSERVATION && !formData.safetyCategory) ||
                 !formData.observation.trim() ||
                 !formData.observationPhoto
             ) {
@@ -909,44 +918,46 @@
                         </select>
                     </div>
 
-                    <div className="md:col-span-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                            Category
-                            {!isEditing && <span className="text-red-500 ml-1">*</span>}
-                        </label>
-                        <div className="mt-2 flex items-center space-x-6">
-                            <div className="flex items-center">
-                                <input
-                                    id="unsafe-act"
-                                    name="safetyCategory"
-                                    type="radio"
-                                    value={SafetyCategory.UNSAFE_ACT}
-                                    checked={formData.safetyCategory === SafetyCategory.UNSAFE_ACT}
-                                    onChange={handleChange}
-                                    disabled={isEditing}
-                                    className="h-4 w-4 border-gray-300 text-simon-orange focus:ring-simon-orange disabled:cursor-not-allowed disabled:bg-gray-200 dark:disabled:bg-gray-600"
-                                />
-                                <label htmlFor="unsafe-act" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
-                                    Unsafe Act
-                                </label>
-                            </div>
-                            <div className="flex items-center">
-                                <input
-                                    id="unsafe-condition"
-                                    name="safetyCategory"
-                                    type="radio"
-                                    value={SafetyCategory.UNSAFE_CONDITION}
-                                    checked={formData.safetyCategory === SafetyCategory.UNSAFE_CONDITION}
-                                    onChange={handleChange}
-                                    disabled={isEditing}
-                                    className="h-4 w-4 border-gray-300 text-simon-orange focus:ring-simon-orange disabled:cursor-not-allowed disabled:bg-gray-200 dark:disabled:bg-gray-600"
-                                />
-                                <label htmlFor="unsafe-condition" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
-                                    Unsafe Condition
-                                </label>
+                    {formData.issueType === IssueType.OBSERVATION && (
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700">
+                                Category
+                                {!isEditing && <span className="text-red-500 ml-1">*</span>}
+                            </label>
+                            <div className="mt-2 flex items-center space-x-6">
+                                <div className="flex items-center">
+                                    <input
+                                        id="unsafe-act"
+                                        name="safetyCategory"
+                                        type="radio"
+                                        value={SafetyCategory.UNSAFE_ACT}
+                                        checked={formData.safetyCategory === SafetyCategory.UNSAFE_ACT}
+                                        onChange={handleChange}
+                                        disabled={isEditing}
+                                        className="h-4 w-4 border-gray-300 text-simon-orange focus:ring-simon-orange disabled:cursor-not-allowed disabled:bg-gray-200 dark:disabled:bg-gray-600"
+                                    />
+                                    <label htmlFor="unsafe-act" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+                                        Unsafe Act
+                                    </label>
+                                </div>
+                                <div className="flex items-center">
+                                    <input
+                                        id="unsafe-condition"
+                                        name="safetyCategory"
+                                        type="radio"
+                                        value={SafetyCategory.UNSAFE_CONDITION}
+                                        checked={formData.safetyCategory === SafetyCategory.UNSAFE_CONDITION}
+                                        onChange={handleChange}
+                                        disabled={isEditing}
+                                        className="h-4 w-4 border-gray-300 text-simon-orange focus:ring-simon-orange disabled:cursor-not-allowed disabled:bg-gray-200 dark:disabled:bg-gray-600"
+                                    />
+                                    <label htmlFor="unsafe-condition" className="ml-2 block text-sm text-gray-900 dark:text-gray-300">
+                                        Unsafe Condition
+                                    </label>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
 
                     {subContractorsForProject.length > 0 && (
                          <div className="md:col-span-1">
@@ -2389,11 +2400,11 @@
                     <span className="font-bold text-blue-600">{analyticsData.totals.leading.nearMiss}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Unsafe Act:</span>
+                    <span>Observation - Unsafe Act:</span>
                     <span className="font-bold text-blue-600">{analyticsData.totals.leading.unsafeAct}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Unsafe Condition:</span>
+                    <span>Observation - Unsafe Condition:</span>
                     <span className="font-bold text-blue-600">{analyticsData.totals.leading.unsafeCondition}</span>
                   </div>
                   <div className="mt-3 pt-3 border-t">
