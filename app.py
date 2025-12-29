@@ -345,10 +345,16 @@ def add_observation():
         print(f"Received observation data: {data}")  # Debug logging
         
         # Validate required fields
-        required_fields = ['projectCode', 'date', 'raisedBy', 'issueType', 'safetyCategory', 'observation']
+        required_fields = ['projectCode', 'date', 'raisedBy', 'issueType', 'observation']
         for field in required_fields:
             if not data.get(field):
                 return jsonify({"message": f"Missing required field: {field}"}), 400
+        
+        # safetyCategory is only required for Observation issue type
+        issue_type = data.get('issueType', '')
+        if issue_type == 'Observation':
+            if not data.get('safetyCategory'):
+                return jsonify({"message": "Missing required field: safetyCategory (required for Observation issue type)"}), 400
         
         # Save photos/reports to disk/S3 if they are base64 data URLs
         if data.get('observationPhoto'):
@@ -370,6 +376,10 @@ def add_observation():
         for field in valid_fields:
             if field in data and data[field] is not None:
                 observation_data[field] = data[field]
+        
+        # Set default safetyCategory to empty string if not provided (for non-Observation types)
+        if 'safetyCategory' not in observation_data:
+            observation_data['safetyCategory'] = ''
         
         new_obs = Observation(**observation_data)
         db.session.add(new_obs)
@@ -401,6 +411,12 @@ def update_observation(obs_id: int):
         if 'complianceReport' in data and data.get('complianceReport'):
             data['complianceReport'] = save_base64_image(data.get('complianceReport'), 'compliance_report')
         
+        # Validate safetyCategory if issueType is Observation
+        issue_type = data.get('issueType', obs.issueType)
+        if issue_type == 'Observation' and 'safetyCategory' in data:
+            if not data.get('safetyCategory'):
+                return jsonify({"message": "Missing required field: safetyCategory (required for Observation issue type)"}), 400
+        
         # Update only valid fields
         valid_fields = [
             'projectCode', 'date', 'raisedBy', 'issueType', 'safetyCategory', 'observation',
@@ -411,6 +427,10 @@ def update_observation(obs_id: int):
         for key, value in data.items():
             if key in valid_fields and hasattr(obs, key):
                 setattr(obs, key, value)
+        
+        # Clear safetyCategory if issueType is changed to non-Observation
+        if 'issueType' in data and data['issueType'] != 'Observation':
+            obs.safetyCategory = ''
         
         db.session.commit()
         
@@ -615,20 +635,22 @@ def get_analytics():
                 totals['lagging']['total'] += 1
                 monthly_data[month_key]['lagging'] += 1
             
-            # Count Leading Indicators (by issueType for Near Miss, by safetyCategory for Unsafe Act/Condition)
+            # Count Leading Indicators (by issueType for Near Miss, by safetyCategory for Unsafe Act/Condition - only for Observation)
             if issue_type == 'Near Miss':
                 totals['leading']['nearMiss'] += 1
                 totals['leading']['total'] += 1
                 monthly_data[month_key]['leading'] += 1
             
-            if safety_category == 'Unsafe Act':
-                totals['leading']['unsafeAct'] += 1
-                totals['leading']['total'] += 1
-                monthly_data[month_key]['leading'] += 1
-            elif safety_category == 'Unsafe Condition':
-                totals['leading']['unsafeCondition'] += 1
-                totals['leading']['total'] += 1
-                monthly_data[month_key]['leading'] += 1
+            # Unsafe Act and Unsafe Condition only count for Observation issue type
+            if issue_type == 'Observation':
+                if safety_category == 'Unsafe Act':
+                    totals['leading']['unsafeAct'] += 1
+                    totals['leading']['total'] += 1
+                    monthly_data[month_key]['leading'] += 1
+                elif safety_category == 'Unsafe Condition':
+                    totals['leading']['unsafeCondition'] += 1
+                    totals['leading']['total'] += 1
+                    monthly_data[month_key]['leading'] += 1
         
         # Convert monthly data to list and sort
         monthly_list = []
@@ -648,7 +670,7 @@ def get_analytics():
             {'label': 'First Aid', 'count': totals['lagging']['firstAid'], 'color': 'rgba(234, 179, 8, 0.8)'},
             {'label': 'Fire', 'count': totals['lagging']['fire'], 'color': 'rgba(251, 113, 133, 0.8)'},
             {'label': 'Near Miss', 'count': totals['leading']['nearMiss'], 'color': 'rgba(251, 191, 36, 0.8)'},
-            {'label': 'Unsafe Act & Condition', 'count': totals['leading']['unsafeAct'] + totals['leading']['unsafeCondition'], 'color': 'rgba(34, 197, 94, 0.8)'}
+            {'label': 'Unsafe Act & Unsafe Condition', 'count': totals['leading']['unsafeAct'] + totals['leading']['unsafeCondition'], 'color': 'rgba(34, 197, 94, 0.8)'}
         ]
         
         return jsonify({
