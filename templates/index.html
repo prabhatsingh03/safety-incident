@@ -12,6 +12,7 @@
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script>
       tailwind.config = {
         theme: {
@@ -66,6 +67,7 @@
       LTI: 'LTI',
       NEAR_MISS: 'Near Miss',
       OBSERVATION: 'Observation',
+      FIRST_AID: 'First Aid',
     };
 
     const Status = {
@@ -142,7 +144,7 @@
     );
 
     const EyeIcon = () => (
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
       </svg>
@@ -161,7 +163,7 @@
     );
 
     // Header Component
-    const Header = ({ onNewReport, onManageFields, onLogout, onLogin, userRole }) => {
+    const Header = ({ onNewReport, onManageFields, onLogout, onLogin, userRole, onShowAnalytics }) => {
       return (
         <header className="bg-simon-blue shadow-md sticky top-0 z-40">
           <div className="container mx-auto px-2 sm:px-4 md:px-8 py-2 sm:py-3">
@@ -174,6 +176,13 @@
                 </div>
              
              <div className="flex items-center gap-1 sm:gap-2 md:gap-3">
+              <button
+                onClick={onShowAnalytics}
+                className="inline-flex items-center gap-1 sm:gap-2 justify-center px-2 sm:px-3 md:px-4 py-2 border border-transparent shadow-sm text-xs sm:text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-simon-blue focus:ring-blue-500 min-h-[36px] sm:min-h-[40px]"
+              >
+                <EyeIcon />
+                <span className="hidden sm:inline">Indicators</span>
+              </button>
               {userRole === UserRole.ADMIN && (
                 <button
                     onClick={onManageFields}
@@ -241,6 +250,7 @@
           <SummaryCard title="Fatal" count={counts[IssueType.FATAL]} icon={<HeartBrokenIcon />} color="border-red-500" />
           <SummaryCard title="LTI" count={counts[IssueType.LTI]} icon={<UserMinusIcon />} color="border-orange-500" />
           <SummaryCard title="Near Miss" count={counts[IssueType.NEAR_MISS]} icon={<ExclamationTriangleIcon />} color="border-purple-500" />
+          <SummaryCard title="First Aid" count={counts[IssueType.FIRST_AID]} icon={<FirstAidIcon />} color="border-yellow-500" />
           <SummaryCard title="Observations" count={counts[IssueType.OBSERVATION]} icon={<EyeIcon />} color="border-green-500" />
         </div>
       );
@@ -329,10 +339,10 @@
                     <td className="px-6 py-4">
                         <div className="flex flex-col space-y-1">
                             {obs.observationPhoto && <PhotoLink url={obs.observationPhoto} label="Obs. Photo" />}
-                            {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && obs.compliancePhoto && (
+                            {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS || obs.issueType === IssueType.FIRST_AID) && obs.compliancePhoto && (
                                 <PhotoLink url={obs.compliancePhoto} label="Comp. Photo" />
                             )}
-                            {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && obs.complianceReport && (
+                            {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS || obs.issueType === IssueType.FIRST_AID) && obs.complianceReport && (
                                 <a
                                     href={obs.complianceReport}
                                     target="_blank"
@@ -350,7 +360,7 @@
                         <button onClick={() => onView(obs)} className="text-simon-blue hover:text-simon-blue/80" title="View">
                           <EyeIcon />
                         </button>
-                        {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) ? (
+                        {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS || obs.issueType === IssueType.FIRST_AID) ? (
                           <button onClick={() => handleEditClick(obs)} className={`text-simon-blue/80 hover:text-simon-blue ${!canEdit && 'cursor-not-allowed opacity-50'}`} title="Edit">
                             <EditIcon />
                           </button>
@@ -421,15 +431,15 @@
                               <p className="text-sm text-gray-700 break-words">{obs.compliance}</p>
                           </div>
                       )}
-                      {(obs.observationPhoto || ((obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && (obs.compliancePhoto || obs.complianceReport))) && (
+                      {(obs.observationPhoto || ((obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS || obs.issueType === IssueType.FIRST_AID) && (obs.compliancePhoto || obs.complianceReport))) && (
                          <div>
                             <p className="text-xs font-semibold text-gray-500">Attachments:</p>
                             <div className="flex items-center gap-4 mt-1">
                                 {obs.observationPhoto && <PhotoLink url={obs.observationPhoto} label="Observation" />}
-                                {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && obs.compliancePhoto && (
+                                {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS || obs.issueType === IssueType.FIRST_AID) && obs.compliancePhoto && (
                                     <PhotoLink url={obs.compliancePhoto} label="Compliance" />
                                 )}
-                                {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && obs.complianceReport && (
+                                {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS || obs.issueType === IssueType.FIRST_AID) && obs.complianceReport && (
                                     <a
                                         href={obs.complianceReport}
                                         target="_blank"
@@ -451,7 +461,7 @@
                           <EyeIcon />
                           View
                       </button>
-                      {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS) && (
+                      {(obs.issueType === IssueType.OBSERVATION || obs.issueType === IssueType.NEAR_MISS || obs.issueType === IssueType.FIRST_AID) && (
                         <button onClick={() => handleEditClick(obs)} className={`flex items-center gap-1 text-sm text-simon-blue/90 hover:text-simon-blue font-medium py-1 px-2 rounded-md hover:bg-gray-100 transition-colors ${!canEdit && 'cursor-not-allowed opacity-50'}`}>
                             <EditIcon />
                             Edit
@@ -1563,6 +1573,7 @@
     
     // Main App Component
     const App = ({ user, onLogout, onLogin }) => {
+      const [showAnalytics, setShowAnalytics] = React.useState(false);
       const [observations, setObservations] = React.useState([]);
       const [projects, setProjects] = React.useState([]);
       const [subContractors, setSubContractors] = React.useState({});
@@ -1755,6 +1766,7 @@
           [IssueType.LTI]: 0,
           [IssueType.NEAR_MISS]: 0,
           [IssueType.OBSERVATION]: 0,
+          [IssueType.FIRST_AID]: 0,
         };
         for (const obs of monthFilteredObservations) {
             if (counts.hasOwnProperty(obs.issueType)) {
@@ -1920,9 +1932,13 @@
         }
       };
 
+      if (showAnalytics) {
+        return <Analytics onBack={() => setShowAnalytics(false)} />;
+      }
+
       return (
         <div className="min-h-screen bg-gray-50 text-gray-800 font-sans">
-          <Header onNewReport={handleNewReport} onManageFields={() => setManageFieldsModalOpen(true)} onLogout={onLogout} onLogin={onLogin} userRole={user.role} />
+          <Header onNewReport={handleNewReport} onManageFields={() => setManageFieldsModalOpen(true)} onLogout={onLogout} onLogin={onLogin} userRole={user.role} onShowAnalytics={() => setShowAnalytics(true)} />
           <main className="container mx-auto p-2 sm:p-4 md:p-8">
             <SummaryCards counts={summaryCounts} />
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 my-4 p-3 sm:p-4 bg-white rounded-lg shadow">
@@ -2142,6 +2158,306 @@
                 </div>
             </div>
         );
+    };
+
+    // Analytics Component
+    const Analytics = ({ onBack }) => {
+      const [analyticsData, setAnalyticsData] = React.useState(null);
+      const [loading, setLoading] = React.useState(true);
+      const lineChartRef = React.useRef(null);
+      const lineChartInstance = React.useRef(null);
+      const pyramidChartRef = React.useRef(null);
+      const pyramidChartInstance = React.useRef(null);
+
+      React.useEffect(() => {
+        fetchAnalyticsData();
+      }, []);
+
+      React.useEffect(() => {
+        if (analyticsData) {
+          renderLineChart();
+          renderPyramidChart();
+        }
+        return () => {
+          if (lineChartInstance.current) {
+            lineChartInstance.current.destroy();
+          }
+          if (pyramidChartInstance.current) {
+            pyramidChartInstance.current.destroy();
+          }
+        };
+      }, [analyticsData]);
+
+      const fetchAnalyticsData = async () => {
+        try {
+          setLoading(true);
+          const res = await fetch('/api/analytics');
+          const data = await res.json();
+          setAnalyticsData(data);
+        } catch (error) {
+          console.error('Failed to fetch analytics data:', error);
+          alert('Failed to load analytics data');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      const renderLineChart = () => {
+        if (!analyticsData || !lineChartRef.current) return;
+
+        const ctx = lineChartRef.current.getContext('2d');
+        
+        if (lineChartInstance.current) {
+          lineChartInstance.current.destroy();
+        }
+
+        const labels = analyticsData.monthlyData.map(d => d.month);
+        const leadingData = analyticsData.monthlyData.map(d => d.leading);
+        const laggingData = analyticsData.monthlyData.map(d => d.lagging);
+
+        lineChartInstance.current = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Leading Indicators',
+                data: leadingData,
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.4,
+                fill: true,
+              },
+              {
+                label: 'Lagging Indicators',
+                data: laggingData,
+                borderColor: 'rgb(239, 68, 68)',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                tension: 0.4,
+                fill: true,
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              title: {
+                display: true,
+                text: 'Leading vs Lagging Indicators Over Time',
+                font: { size: 18 }
+              },
+              legend: {
+                display: true,
+                position: 'top'
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Count'
+                }
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: 'Month'
+                }
+              }
+            }
+          }
+        });
+      };
+
+      const renderPyramidChart = () => {
+        if (!analyticsData || !pyramidChartRef.current) return;
+
+        const ctx = pyramidChartRef.current.getContext('2d');
+        
+        if (pyramidChartInstance.current) {
+          pyramidChartInstance.current.destroy();
+        }
+
+        const pyramidData = analyticsData.pyramidData;
+        const labels = pyramidData.map(d => d.label);
+        const data = pyramidData.map(d => d.count);
+        const colors = pyramidData.map(d => d.color);
+
+        pyramidChartInstance.current = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              label: 'Count',
+              data: data,
+              backgroundColor: colors,
+              borderColor: colors.map(c => c.replace('0.8', '1')),
+              borderWidth: 1
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              title: {
+                display: true,
+                text: 'EHS Statistics',
+                font: { size: 18 }
+              },
+              legend: {
+                display: false
+              }
+            },
+            scales: {
+              x: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Count'
+                }
+              },
+              y: {
+                title: {
+                  display: true,
+                  text: 'Incident Type'
+                }
+              }
+            }
+          }
+        });
+      };
+
+      if (loading) {
+        return (
+          <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="text-center">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-simon-blue"></div>
+              <p className="mt-4 text-gray-600">Loading analytics...</p>
+            </div>
+          </div>
+        );
+      }
+
+      if (!analyticsData) {
+        return (
+          <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-red-600">Failed to load analytics data</p>
+              <button
+                onClick={onBack}
+                className="mt-4 px-4 py-2 bg-simon-blue text-white rounded hover:bg-simon-blue/90"
+              >
+                Go Back
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen bg-gray-50">
+          <header className="bg-simon-blue shadow-md sticky top-0 z-40">
+            <div className="container mx-auto px-2 sm:px-4 md:px-8 py-2 sm:py-3">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <img src="https://simonindia.com/assets/images/logo.png" alt="Simon India Logo" className="h-8 sm:h-10"/>
+                  <h1 className="text-sm sm:text-lg md:text-xl font-semibold text-white">
+                    Safety Indicators Analytics
+                  </h1>
+                </div>
+                <button
+                  onClick={onBack}
+                  className="inline-flex items-center gap-2 justify-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-simon-orange hover:bg-simon-orange/90"
+                >
+                  Back to Reports
+                </button>
+              </div>
+            </div>
+          </header>
+
+          <main className="container mx-auto p-4 md:p-8">
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="bg-white p-6 rounded-lg shadow">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4">Leading Indicators</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Near Miss:</span>
+                    <span className="font-bold text-blue-600">{analyticsData.totals.leading.nearMiss}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Unsafe Act:</span>
+                    <span className="font-bold text-blue-600">{analyticsData.totals.leading.unsafeAct}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Unsafe Condition:</span>
+                    <span className="font-bold text-blue-600">{analyticsData.totals.leading.unsafeCondition}</span>
+                  </div>
+                  <div className="mt-3 pt-3 border-t">
+                    <div className="flex justify-between font-semibold">
+                      <span>Total Leading:</span>
+                      <span className="text-blue-600">{analyticsData.totals.leading.total}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-lg shadow">
+                <h3 className="text-lg font-semibold text-gray-700 mb-4">Lagging Indicators</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Fatal:</span>
+                    <span className="font-bold text-red-600">{analyticsData.totals.lagging.fatal}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>LTI:</span>
+                    <span className="font-bold text-red-600">{analyticsData.totals.lagging.lti}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Fire:</span>
+                    <span className="font-bold text-red-600">{analyticsData.totals.lagging.fire}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>MTC:</span>
+                    <span className="font-bold text-red-600">{analyticsData.totals.lagging.mtc}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>RWC:</span>
+                    <span className="font-bold text-red-600">{analyticsData.totals.lagging.rwc}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>First Aid:</span>
+                    <span className="font-bold text-red-600">{analyticsData.totals.lagging.firstAid}</span>
+                  </div>
+                  <div className="mt-3 pt-3 border-t">
+                    <div className="flex justify-between font-semibold">
+                      <span>Total Lagging:</span>
+                      <span className="text-red-600">{analyticsData.totals.lagging.total}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Line Chart */}
+            <div className="bg-white p-6 rounded-lg shadow mb-6">
+              <div className="h-96">
+                <canvas ref={lineChartRef}></canvas>
+              </div>
+            </div>
+
+            {/* Pyramid Chart */}
+            <div className="bg-white p-6 rounded-lg shadow">
+              <div className="h-[500px]">
+                <canvas ref={pyramidChartRef}></canvas>
+              </div>
+            </div>
+          </main>
+        </div>
+      );
     };
 
     // Main Component to handle routing
