@@ -524,6 +524,145 @@ def delete_subcontractor(subcontractor_id: int):
         db.session.rollback()
         return jsonify({"message": f"Failed to delete subcontractor: {str(e)}"}), 500
 
+@app.route('/api/analytics', methods=['GET'])
+def get_analytics():
+    try:
+        from collections import defaultdict
+        from datetime import datetime
+        
+        observations = Observation.query.all()
+        
+        # Define indicators
+        leading_indicators = {
+            'Near Miss': 'Near Miss',
+            'Unsafe Act': 'Unsafe Act',
+            'Unsafe Condition': 'Unsafe Condition'
+        }
+        
+        lagging_indicators = {
+            'Fatal': 'Fatal',
+            'LTI': 'LTI',
+            'Fire': 'Fire',
+            'MTC': 'MTC',
+            'RWC': 'RWC',
+            'First Aid': 'First Aid'
+        }
+        
+        # Calculate totals
+        totals = {
+            'leading': {
+                'nearMiss': 0,
+                'unsafeAct': 0,
+                'unsafeCondition': 0,
+                'total': 0
+            },
+            'lagging': {
+                'fatal': 0,
+                'lti': 0,
+                'fire': 0,
+                'mtc': 0,
+                'rwc': 0,
+                'firstAid': 0,
+                'total': 0
+            }
+        }
+        
+        # Monthly data
+        monthly_data = defaultdict(lambda: {'leading': 0, 'lagging': 0})
+        
+        # Process observations
+        for obs in observations:
+            issue_type = obs.issueType
+            safety_category = obs.safetyCategory or ''
+            date_str = obs.date
+            
+            # Extract month from date (format: YYYY-MM-DD or similar)
+            try:
+                if date_str:
+                    # Try to parse date
+                    if len(date_str) >= 7:
+                        month_key = date_str[:7]  # YYYY-MM
+                    else:
+                        month_key = 'Unknown'
+                else:
+                    month_key = 'Unknown'
+            except:
+                month_key = 'Unknown'
+            
+            # Count Lagging Indicators (by issueType)
+            if issue_type == 'Fatal':
+                totals['lagging']['fatal'] += 1
+                totals['lagging']['total'] += 1
+                monthly_data[month_key]['lagging'] += 1
+            elif issue_type == 'LTI':
+                totals['lagging']['lti'] += 1
+                totals['lagging']['total'] += 1
+                monthly_data[month_key]['lagging'] += 1
+            elif issue_type == 'Fire':
+                totals['lagging']['fire'] += 1
+                totals['lagging']['total'] += 1
+                monthly_data[month_key]['lagging'] += 1
+            elif issue_type == 'MTC':
+                totals['lagging']['mtc'] += 1
+                totals['lagging']['total'] += 1
+                monthly_data[month_key]['lagging'] += 1
+            elif issue_type == 'RWC':
+                totals['lagging']['rwc'] += 1
+                totals['lagging']['total'] += 1
+                monthly_data[month_key]['lagging'] += 1
+            elif issue_type == 'First Aid':
+                totals['lagging']['firstAid'] += 1
+                totals['lagging']['total'] += 1
+                monthly_data[month_key]['lagging'] += 1
+            
+            # Count Leading Indicators (by issueType for Near Miss, by safetyCategory for Unsafe Act/Condition)
+            if issue_type == 'Near Miss':
+                totals['leading']['nearMiss'] += 1
+                totals['leading']['total'] += 1
+                monthly_data[month_key]['leading'] += 1
+            
+            if safety_category == 'Unsafe Act':
+                totals['leading']['unsafeAct'] += 1
+                totals['leading']['total'] += 1
+                monthly_data[month_key]['leading'] += 1
+            elif safety_category == 'Unsafe Condition':
+                totals['leading']['unsafeCondition'] += 1
+                totals['leading']['total'] += 1
+                monthly_data[month_key]['leading'] += 1
+        
+        # Convert monthly data to list and sort
+        monthly_list = []
+        for month, data in sorted(monthly_data.items()):
+            monthly_list.append({
+                'month': month,
+                'leading': data['leading'],
+                'lagging': data['lagging']
+            })
+        
+        # Pyramid data (ordered from most severe to least severe)
+        pyramid_data = [
+            {'label': 'Fatal', 'count': totals['lagging']['fatal'], 'color': 'rgba(220, 38, 38, 0.8)'},
+            {'label': 'LTI', 'count': totals['lagging']['lti'], 'color': 'rgba(251, 146, 60, 0.8)'},
+            {'label': 'RWC', 'count': totals['lagging']['rwc'], 'color': 'rgba(251, 191, 36, 0.8)'},
+            {'label': 'MTC', 'count': totals['lagging']['mtc'], 'color': 'rgba(59, 130, 246, 0.8)'},
+            {'label': 'First Aid', 'count': totals['lagging']['firstAid'], 'color': 'rgba(234, 179, 8, 0.8)'},
+            {'label': 'Fire', 'count': totals['lagging']['fire'], 'color': 'rgba(251, 113, 133, 0.8)'},
+            {'label': 'Near Miss', 'count': totals['leading']['nearMiss'], 'color': 'rgba(251, 191, 36, 0.8)'},
+            {'label': 'Unsafe Act & Condition', 'count': totals['leading']['unsafeAct'] + totals['leading']['unsafeCondition'], 'color': 'rgba(34, 197, 94, 0.8)'}
+        ]
+        
+        return jsonify({
+            'totals': totals,
+            'monthlyData': monthly_list,
+            'pyramidData': pyramid_data
+        })
+        
+    except Exception as e:
+        print(f"Error generating analytics: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"message": f"Failed to generate analytics: {str(e)}"}), 500
+
 @app.route('/api/export-excel', methods=['GET'])
 def export_excel():
     try:
